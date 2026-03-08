@@ -166,6 +166,7 @@ model Ticket {
 model Comment {
   id           String    @id @default(cuid())
   content      String
+  isInternal   Boolean   @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
