@@ -3,6 +3,12 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { generateFolio } from "@/lib/tickets";
+import {
+  notifyTicketCreated,
+  notifyTicketAssigned,
+  notifyStatusChanged,
+  notifyNewComment,
+} from "@/lib/mailer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -58,6 +64,9 @@ export async function createTicket(formData: FormData) {
     },
   });
 
+  // Email: notificar al solicitante
+  notifyTicketCreated(user.email, user.name, ticket).catch(console.error);
+
   redirect(`/tickets/${ticket.id}`);
 }
 
@@ -72,7 +81,15 @@ export async function changeTicketStatus(ticketId: string, status: string) {
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { clientId: true, status: true, folio: true },
+    select: {
+      clientId: true,
+      status: true,
+      folio: true,
+      title: true,
+      priority: true,
+      requester: { select: { id: true, email: true, name: true } },
+      assignee: { select: { id: true, email: true, name: true } },
+    },
   });
 
   if (!ticket) throw new Error("Ticket no encontrado");
@@ -93,6 +110,8 @@ export async function changeTicketStatus(ticketId: string, status: string) {
     throw new Error("Sin permisos para este ticket");
   }
 
+  const previousStatus = ticket.status;
+
   await prisma.ticket.update({
     where: { id: ticketId },
     data: { status: status as "OPEN" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED" },
@@ -105,9 +124,19 @@ export async function changeTicketStatus(ticketId: string, status: string) {
       entityId: ticketId,
       description: `Estatus de ${ticket.folio} cambiado a ${status}`,
       actorId: user.id,
-      metadataJson: JSON.stringify({ from: ticket.status, to: status }),
+      metadataJson: JSON.stringify({ from: previousStatus, to: status }),
     },
   });
+
+  // Email: notificar al solicitante y al asignado
+  notifyStatusChanged(
+    { id: ticketId, folio: ticket.folio, title: ticket.title, status, priority: ticket.priority },
+    previousStatus,
+    ticket.requester.email,
+    ticket.requester.name,
+    ticket.assignee?.email,
+    ticket.assignee?.name
+  ).catch(console.error);
 
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/tickets");
@@ -128,7 +157,14 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { folio: true, clientId: true },
+    select: {
+      folio: true,
+      title: true,
+      clientId: true,
+      priority: true,
+      status: true,
+      requester: { select: { name: true } },
+    },
   });
 
   if (!ticket) throw new Error("Ticket no encontrado");
@@ -158,6 +194,22 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
     },
   });
 
+  // Email: notificar al nuevo asignado
+  if (assigneeId) {
+    prisma.user.findUnique({ where: { id: assigneeId }, select: { email: true, name: true } })
+      .then((assignee) => {
+        if (assignee) {
+          notifyTicketAssigned(
+            assignee.email,
+            assignee.name,
+            { id: ticketId, folio: ticket.folio, title: ticket.title, status: "IN_PROGRESS", priority: ticket.priority },
+            ticket.requester.name
+          ).catch(console.error);
+        }
+      })
+      .catch(console.error);
+  }
+
   revalidatePath(`/tickets/${ticketId}`);
 }
 
@@ -184,7 +236,15 @@ export async function addComment(formData: FormData) {
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { clientId: true, folio: true },
+    select: {
+      clientId: true,
+      folio: true,
+      title: true,
+      status: true,
+      priority: true,
+      requester: { select: { id: true, email: true, name: true } },
+      assignee: { select: { id: true, email: true, name: true } },
+    },
   });
 
   if (!ticket) throw new Error("Ticket no encontrado");
@@ -201,6 +261,21 @@ export async function addComment(formData: FormData) {
       authorId: user.id,
     },
   });
+
+  // Email: solo comentarios públicos notifican al solicitante y asignado
+  if (!isInternal) {
+    notifyNewComment(
+      { id: ticketId, folio: ticket.folio, title: ticket.title, status: ticket.status, priority: ticket.priority },
+      user.id,
+      content.trim(),
+      ticket.requester.email,
+      ticket.requester.name,
+      ticket.requester.id,
+      ticket.assignee?.email,
+      ticket.assignee?.name,
+      ticket.assignee?.id
+    ).catch(console.error);
+  }
 
   revalidatePath(`/tickets/${ticketId}`);
 }
