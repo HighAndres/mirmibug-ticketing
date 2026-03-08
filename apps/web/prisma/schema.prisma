@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  ASSIGN
+  CHANGE_ROLE
+  GRANT_PERMISSION
+  REVOKE_PERMISSION
+  LOGIN
+  LOGOUT
+}
+
+model ClientCompany {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+  contactEmail String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  categories  Category[]
+  tickets     Ticket[]
+}
+
+model Role {
+  id              String           @id @default(cuid())
+  key             String           @unique
+  name            String
+  description     String?
+  isSystem        Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  users           User[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id              String           @id @default(cuid())
+  key             String           @unique
+  name            String
+  description     String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model UserPermission {
+  id           String     @id @default(cuid())
+  userId       String
+  permissionId String
+  allowed      Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+}
+
+model User {
+  id                  String           @id @default(cuid())
+  name                String
+  email               String           @unique
+  password            String
+  isActive            Boolean          @default(true)
+  failedLoginAttempts Int              @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  clientId            String?
+  roleId              String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  client              ClientCompany?   @relation(fields: [clientId], references: [id])
+  role                Role             @relation(fields: [roleId], references: [id])
+
+  tickets             Ticket[]         @relation("TicketRequester")
+  assigned            Ticket[]         @relation("TicketAssignee")
+  comments            Comment[]
+  userPermissions     UserPermission[]
+
+  auditLogs           AuditLog[]       @relation("AuditActor")
+}
+
+model Category {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  clientId    String
+  client      ClientCompany @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  tickets     Ticket[]
+
+  @@unique([clientId, name])
+}
+
+model Ticket {
+  id           String         @id @default(cuid())
+  folio        String         @unique
+  title        String
+  description  String
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  requesterId  String
+  requester    User           @relation("TicketRequester", fields: [requesterId], references: [id])
+
+  assigneeId   String?
+  assignee     User?          @relation("TicketAssignee", fields: [assigneeId], references: [id])
+
+  categoryId   String
+  category     Category       @relation(fields: [categoryId], references: [id])
+
+  clientId     String
+  client       ClientCompany  @relation(fields: [clientId], references: [id])
+
+  comments     Comment[]
+}
+
+model Comment {
+  id           String    @id @default(cuid())
+  content      String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  ticketId     String
+  ticket       Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId     String
+  author       User      @relation(fields: [authorId], references: [id])
+}
+
+model AuditLog {
+  id            String       @id @default(cuid())
+  action        AuditAction
+  entityType    String
+  entityId      String?
+  description   String
+  metadataJson  String?
+  createdAt     DateTime     @default(now())
+
+  actorId       String?
+  actor         User?        @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+}
