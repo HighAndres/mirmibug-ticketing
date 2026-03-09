@@ -34,13 +34,28 @@ enum AuditAction {
 }
 
 model ClientCompany {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  isActive    Boolean  @default(true)
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  isActive     Boolean  @default(true)
   contactEmail String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Branding & customization
+  logoUrl      String?
+  primaryColor String?   // hex, e.g. "#38d84e"
+  accentColor  String?   // hex, secondary accent
+  welcomeText  String?   // mensaje en la pantalla de login
+
+  // Contact info
+  supportPhone String?
+  supportEmail String?
+  address      String?
+
+  // Operational config
+  timezone     String?   @default("America/Mexico_City")
+  slaHours     Int?      @default(8)
 
   users       User[]
   categories  Category[]
@@ -166,6 +181,7 @@ model Ticket {
 model Comment {
   id           String    @id @default(cuid())
   content      String
+  isInternal   Boolean   @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
