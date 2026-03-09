@@ -14,46 +14,22 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    roles: [],
-  },
-  {
-    label: "Tickets",
-    href: "/tickets",
-    roles: [],
-  },
-  {
-    label: "Usuarios",
-    href: "/admin/users",
-    roles: ["SUPERADMIN", "CLIENT_ADMIN"],
-  },
-  {
-    label: "Clientes",
-    href: "/admin/clients",
-    roles: ["SUPERADMIN"],
-  },
-  {
-    label: "Categorías",
-    href: "/admin/categories",
-    roles: ["SUPERADMIN", "CLIENT_ADMIN"],
-  },
-  {
-    label: "Roles y permisos",
-    href: "/admin/roles",
-    roles: ["SUPERADMIN"],
-  },
-  {
-    label: "Reportes",
-    href: "/reports",
-    roles: ["SUPERADMIN", "CLIENT_ADMIN", "AGENT"],
-  },
-  {
-    label: "Auditoría",
-    href: "/admin/audit",
-    roles: ["SUPERADMIN"],
-  },
+  { label: "Dashboard",      href: "/dashboard",          roles: [] },
+  { label: "Tickets",        href: "/tickets",             roles: [] },
+
+  // Administración
+  { label: "Usuarios",       href: "/admin/users",         roles: ["SUPERADMIN", "CLIENT_ADMIN"] },
+  { label: "Clientes",       href: "/admin/clients",       roles: ["SUPERADMIN"] },
+  { label: "Categorías",     href: "/admin/categories",    roles: ["SUPERADMIN", "CLIENT_ADMIN"] },
+  { label: "Roles y permisos", href: "/admin/roles",       roles: ["SUPERADMIN"] },
+
+  // Vista de empresa (CLIENT_SUPERVISOR)
+  { label: "Equipo",         href: "/company/users",       roles: ["CLIENT_SUPERVISOR"] },
+  { label: "Actividad",      href: "/company/audit",       roles: ["CLIENT_SUPERVISOR", "CLIENT_ADMIN"] },
+
+  // Reportes y auditoría
+  { label: "Reportes",       href: "/reports",             roles: ["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_SUPERVISOR"] },
+  { label: "Auditoría",      href: "/admin/audit",         roles: ["SUPERADMIN"] },
 ];
 
 // ---------------------------------------------------------------------------
