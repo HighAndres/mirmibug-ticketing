@@ -35,4 +35,5 @@ Thumbs.db
 # builds / coverage
 coverage/
 dist/
-build/.claude/settings.local.json
+build/.claude/
+.claude/
