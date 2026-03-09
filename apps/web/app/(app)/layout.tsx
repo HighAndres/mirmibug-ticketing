@@ -1,6 +1,8 @@
 import { auth, signOut } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 // ---------------------------------------------------------------------------
 // Definición de navegación por rol
@@ -96,18 +98,44 @@ export default async function AppLayout({
     (item) => item.roles.length === 0 || item.roles.includes(roleKey)
   );
 
+  // Load client branding if the user belongs to a client
+  const clientBranding = user.clientId
+    ? await prisma.clientCompany.findUnique({
+        where: { id: user.clientId },
+        select: { logoUrl: true, primaryColor: true, accentColor: true },
+      })
+    : null;
+
+  const primary = clientBranding?.primaryColor ?? "#38d84e";
+  const accent = clientBranding?.accentColor ?? "#7CFF8D";
+
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-white">
 
       {/* ---- Sidebar ---- */}
       <aside className="flex w-64 flex-col border-r border-white/10 bg-[#0f0f0f]">
 
-        {/* Logo */}
+        {/* Logo / Brand */}
         <div className="border-b border-white/10 px-5 py-5">
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#7CFF8D]">
-            Mirmibug
-          </p>
-          <p className="mt-0.5 text-xs text-zinc-500">IT Services Platform</p>
+          {clientBranding?.logoUrl ? (
+            <div className="flex items-center gap-3">
+              <img
+                src={clientBranding.logoUrl}
+                alt={user.clientName ?? "Logo"}
+                className="h-8 w-auto max-w-[120px] object-contain"
+              />
+            </div>
+          ) : (
+            <>
+              <p
+                className="text-xs font-medium uppercase tracking-[0.2em]"
+                style={{ color: accent }}
+              >
+                {user.clientName ?? "Mirmibug"}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-500">IT Services Platform</p>
+            </>
+          )}
         </div>
 
         {/* Información del usuario */}
@@ -115,7 +143,15 @@ export default async function AppLayout({
           <p className="text-sm font-medium text-white">{user.name}</p>
           <p className="text-xs text-zinc-500">{user.email}</p>
           <div className="mt-2 flex items-center gap-2">
-            <span className="inline-flex rounded-full border border-[#38d84e]/30 bg-[#38d84e]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#7CFF8D]">
+            <span
+              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+              style={{
+                borderColor: `${primary}4d`,
+                backgroundColor: `${primary}1a`,
+                color: accent,
+                border: `1px solid ${primary}4d`,
+              }}
+            >
               {user.roleName}
             </span>
           </div>

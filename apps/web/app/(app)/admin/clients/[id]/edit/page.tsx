@@ -36,6 +36,18 @@ export default async function EditClientPage({
             <p className="mt-0.5 text-sm text-zinc-500">{client.name}</p>
           </div>
         </div>
+        {/* Tab nav */}
+        <div className="mt-4 flex gap-1">
+          <span className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-white/10">
+            Datos generales
+          </span>
+          <Link
+            href={`/admin/clients/${id}/branding`}
+            className="rounded-lg px-3 py-1.5 text-sm text-zinc-400 hover:text-white transition hover:bg-white/5"
+          >
+            Personalización
+          </Link>
+        </div>
       </section>
 
       <section className="mx-auto max-w-3xl px-6 py-8">

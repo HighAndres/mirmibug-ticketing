@@ -97,6 +97,12 @@ export default async function ClientsPage() {
                           >
                             Editar
                           </Link>
+                          <Link
+                            href={`/admin/clients/${c.id}/branding`}
+                            className="text-xs text-[#7CFF8D] hover:text-[#38d84e] transition"
+                          >
+                            Personalizar
+                          </Link>
                           <form action={toggleClientActive.bind(null, c.id)}>
                             <button
                               type="submit"

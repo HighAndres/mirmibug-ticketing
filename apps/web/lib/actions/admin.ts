@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
+import fs from "fs/promises";
+import path from "path";
 
 // ── Guard helper ──────────────────────────────────────────────────────────────
 
@@ -293,4 +295,101 @@ export async function deleteCategory(id: string) {
   await prisma.category.delete({ where: { id } });
 
   revalidatePath("/admin/categories");
+}
+
+// ── Client branding ───────────────────────────────────────────────────────────
+
+export async function updateClientBranding(id: string, formData: FormData) {
+  const session = await requireAdmin("SUPERADMIN");
+  const actor = session.user;
+
+  const client = await prisma.clientCompany.findUnique({ where: { id } });
+  if (!client) throw new Error("Cliente no encontrado");
+
+  // Text / config fields
+  const primaryColor = (formData.get("primaryColor") as string).trim() || null;
+  const accentColor = (formData.get("accentColor") as string).trim() || null;
+  const welcomeText = (formData.get("welcomeText") as string).trim() || null;
+  const supportPhone = (formData.get("supportPhone") as string).trim() || null;
+  const supportEmail = (formData.get("supportEmail") as string).trim() || null;
+  const address = (formData.get("address") as string).trim() || null;
+  const timezone = (formData.get("timezone") as string).trim() || "America/Mexico_City";
+  const slaHoursRaw = parseInt(formData.get("slaHours") as string, 10);
+  const slaHours = isNaN(slaHoursRaw) ? null : slaHoursRaw;
+
+  // Logo upload (optional)
+  let logoUrl = client.logoUrl;
+  const logoFile = formData.get("logo") as File | null;
+
+  if (logoFile && logoFile.size > 0) {
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"];
+    if (!allowedTypes.includes(logoFile.type)) {
+      throw new Error("Formato de imagen no soportado. Usa PNG, JPG, WebP o SVG.");
+    }
+    if (logoFile.size > 2 * 1024 * 1024) {
+      throw new Error("El logo no puede superar 2 MB.");
+    }
+
+    const ext = logoFile.name.split(".").pop()?.toLowerCase() ?? "png";
+    const filename = `${id}.${ext}`;
+
+    // Resolve upload directory relative to the app's public folder
+    const appDir =
+      process.env.APP_DIR ??
+      path.dirname((process.env.DATABASE_URL ?? "").replace(/^file:/, ""));
+    const uploadDir = path.join(appDir, "public", "uploads", "logos");
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const bytes = await logoFile.arrayBuffer();
+    await fs.writeFile(path.join(uploadDir, filename), Buffer.from(bytes));
+    logoUrl = `/uploads/logos/${filename}`;
+  }
+
+  await prisma.clientCompany.update({
+    where: { id },
+    data: {
+      logoUrl,
+      primaryColor,
+      accentColor,
+      welcomeText,
+      supportPhone,
+      supportEmail,
+      address,
+      timezone,
+      slaHours,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "ClientCompany",
+      entityId: id,
+      description: `Branding de cliente "${client.name}" actualizado`,
+      actorId: actor.id,
+    },
+  });
+
+  revalidatePath(`/admin/clients/${id}/branding`);
+  revalidatePath("/admin/clients");
+}
+
+export async function removeClientLogo(id: string) {
+  const session = await requireAdmin("SUPERADMIN");
+  const actor = session.user;
+
+  const client = await prisma.clientCompany.findUnique({ where: { id } });
+  if (!client) throw new Error("Cliente no encontrado");
+
+  if (client.logoUrl) {
+    const appDir =
+      process.env.APP_DIR ??
+      path.dirname((process.env.DATABASE_URL ?? "").replace(/^file:/, ""));
+    const filePath = path.join(appDir, "public", client.logoUrl);
+    await fs.unlink(filePath).catch(() => {});
+  }
+
+  await prisma.clientCompany.update({ where: { id }, data: { logoUrl: null } });
+
+  revalidatePath(`/admin/clients/${id}/branding`);
 }
