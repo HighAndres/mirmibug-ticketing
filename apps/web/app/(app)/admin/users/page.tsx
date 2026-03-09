@@ -37,12 +37,20 @@ export default async function UsersPage() {
               {users.length} usuario{users.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <Link
-            href="/admin/users/new"
-            className="inline-flex items-center gap-2 rounded-xl bg-[#38d84e] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#2bc040]"
-          >
-            + Nuevo usuario
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/users/import"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white"
+            >
+              ↑ Importar CSV
+            </Link>
+            <Link
+              href="/admin/users/new"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#38d84e] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#2bc040]"
+            >
+              + Nuevo usuario
+            </Link>
+          </div>
         </div>
       </section>
 

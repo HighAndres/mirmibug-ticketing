@@ -393,3 +393,166 @@ export async function removeClientLogo(id: string) {
 
   revalidatePath(`/admin/clients/${id}/branding`);
 }
+
+// ── Importar usuarios desde CSV ────────────────────────────────────────────────
+// Formato esperado del CSV (con encabezado):
+// name,email,password,role,clientId
+// "Ana López",ana@empresa.com,Pass1234!,CLIENT_USER,<id opcional>
+
+export type ImportRow = {
+  row: number;
+  name: string;
+  email: string;
+  status: "ok" | "error";
+  error?: string;
+};
+
+export type ImportResult = {
+  total: number;
+  success: number;
+  errors: number;
+  rows: ImportRow[];
+};
+
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+export async function importUsers(
+  _prev: ImportResult | null,
+  formData: FormData
+): Promise<ImportResult> {
+  const session = await requireAdmin();
+  const actor = session.user;
+
+  const file = formData.get("csv") as File | null;
+  if (!file || file.size === 0) {
+    return { total: 0, success: 0, errors: 0, rows: [] };
+  }
+
+  const text = await file.text();
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    return { total: 0, success: 0, errors: 1, rows: [{ row: 0, name: "", email: "", status: "error", error: "El archivo está vacío o solo contiene el encabezado." }] };
+  }
+
+  // Skip header row
+  const dataLines = lines.slice(1);
+
+  // Cache roles and clients for quick lookup
+  const roles = await prisma.role.findMany({ select: { id: true, key: true } });
+  const roleMap = Object.fromEntries(roles.map((r) => [r.key.toUpperCase(), r.id]));
+
+  const clients = actor.roleKey === "SUPERADMIN"
+    ? await prisma.clientCompany.findMany({ select: { id: true, slug: true } })
+    : [];
+  const clientMap = Object.fromEntries(clients.map((c) => [c.id, c.id]));
+
+  const rows: ImportRow[] = [];
+  let success = 0;
+  let errors = 0;
+
+  for (let i = 0; i < dataLines.length; i++) {
+    const rowNum = i + 2; // 1-indexed, +1 for header
+    const parts = parseCsvLine(dataLines[i]);
+    const [rawName, rawEmail, rawPassword, rawRole, rawClientId] = parts;
+
+    const name = rawName?.trim() ?? "";
+    const email = rawEmail?.trim().toLowerCase() ?? "";
+    const password = rawPassword?.trim() ?? "";
+    const roleKey = rawRole?.trim().toUpperCase() ?? "";
+    const clientIdInput = rawClientId?.trim() ?? "";
+
+    // Validation
+    if (!name || !email || !password || !roleKey) {
+      rows.push({ row: rowNum, name, email, status: "error", error: "Faltan campos requeridos (nombre, email, contraseña, rol)" });
+      errors++;
+      continue;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      rows.push({ row: rowNum, name, email, status: "error", error: "Email inválido" });
+      errors++;
+      continue;
+    }
+
+    const roleId = roleMap[roleKey];
+    if (!roleId) {
+      rows.push({ row: rowNum, name, email, status: "error", error: `Rol desconocido: "${rawRole}". Valores válidos: ${Object.keys(roleMap).join(", ")}` });
+      errors++;
+      continue;
+    }
+
+    // Determine clientId
+    let clientId: string | null = null;
+    if (actor.roleKey === "SUPERADMIN") {
+      clientId = clientIdInput ? (clientMap[clientIdInput] ?? null) : null;
+    } else {
+      clientId = actor.clientId ?? null;
+    }
+
+    try {
+      await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: await bcrypt.hash(password, 10),
+          roleId,
+          clientId,
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          action: "CREATE",
+          entityType: "User",
+          entityId: email,
+          description: `Usuario ${email} importado desde CSV`,
+          actorId: actor.id,
+        },
+      });
+
+      rows.push({ row: rowNum, name, email, status: "ok" });
+      success++;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error desconocido";
+      const isDuplicate = msg.includes("Unique constraint") || msg.includes("unique");
+      rows.push({
+        row: rowNum,
+        name,
+        email,
+        status: "error",
+        error: isDuplicate ? "El email ya está registrado" : msg,
+      });
+      errors++;
+    }
+  }
+
+  revalidatePath("/admin/users");
+
+  return { total: dataLines.length, success, errors, rows };
+}

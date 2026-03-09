@@ -151,7 +151,7 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 
   const { user } = session;
 
-  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT"].includes(user.roleKey)) {
+  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_SUPERVISOR"].includes(user.roleKey)) {
     throw new Error("Sin permisos para asignar tickets");
   }
 
