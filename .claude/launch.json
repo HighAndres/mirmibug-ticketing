@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web (Next.js dev)",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": ["apps/web/node_modules/next/dist/bin/next", "dev", "apps/web", "--port", "3001"],
+      "port": 3001,
+      "autoPort": false
+    }
+  ]
+}
