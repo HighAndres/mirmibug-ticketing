@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createUser } from "@/lib/actions/admin";
+import { filterAssignableRoles } from "@/lib/permissions";
 
 export const metadata = { title: "Nuevo usuario" };
 
@@ -13,7 +14,7 @@ export default async function NewUserPage() {
   const { user } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
 
-  const [roles, clients] = await Promise.all([
+  const [allRoles, clients] = await Promise.all([
     prisma.role.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     user.roleKey === "SUPERADMIN"
       ? prisma.clientCompany.findMany({
@@ -23,6 +24,9 @@ export default async function NewUserPage() {
         })
       : [],
   ]);
+
+  // Filtrar roles según lo que el actor puede asignar (anti escalación)
+  const roles = filterAssignableRoles(allRoles, user.roleKey);
 
   return (
     <div className="min-h-full bg-[#0a0a0a] text-white">

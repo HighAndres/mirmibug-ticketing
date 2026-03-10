@@ -81,6 +81,20 @@ const roleDefinitions = [
     ],
   },
   {
+    key: "CLIENT_SUPERVISOR",
+    name: "Supervisor de Cliente",
+    description: "Supervisa tickets y reportes de su empresa sin gestionar usuarios.",
+    isSystem: true,
+    permissions: [
+      "ticket.read",
+      "ticket.update",
+      "ticket.assign",
+      "ticket.close",
+      "report.view",
+      "audit.view",
+    ],
+  },
+  {
     key: "CLIENT_USER",
     name: "Usuario Cliente",
     description: "Usuario final del cliente.",
@@ -180,11 +194,15 @@ async function main() {
     where: { key: "AGENT" },
   });
 
+  const clientSupervisorRole = await prisma.role.findUnique({
+    where: { key: "CLIENT_SUPERVISOR" },
+  });
+
   const clientUserRole = await prisma.role.findUnique({
     where: { key: "CLIENT_USER" },
   });
 
-  if (!superAdminRole || !clientAdminRole || !agentRole || !clientUserRole) {
+  if (!superAdminRole || !clientAdminRole || !agentRole || !clientSupervisorRole || !clientUserRole) {
     throw new Error("No se pudieron resolver los roles base.");
   }
 
@@ -288,6 +306,26 @@ async function main() {
       password: clientAdminPassword,
       isActive: true,
       roleId: clientAdminRole.id,
+      clientId: company.id,
+    },
+  });
+
+  const supervisorPassword = await bcrypt.hash("Supervisor1234!", 10);
+
+  const clientSupervisor = await prisma.user.upsert({
+    where: { email: "supervisor@demoindustrial.com" },
+    update: {
+      name: "Supervisor Demo",
+      isActive: true,
+      roleId: clientSupervisorRole.id,
+      clientId: company.id,
+    },
+    create: {
+      name: "Supervisor Demo",
+      email: "supervisor@demoindustrial.com",
+      password: supervisorPassword,
+      isActive: true,
+      roleId: clientSupervisorRole.id,
       clientId: company.id,
     },
   });
@@ -407,6 +445,7 @@ async function main() {
   console.log("Superadmin:", superAdmin.email);
   console.log("Agente:", agent.email);
   console.log("Client admin:", clientAdmin.email);
+  console.log("Client supervisor:", clientSupervisor.email);
   console.log("Client user:", clientUser.email);
   console.log("Cliente:", company.name);
 }

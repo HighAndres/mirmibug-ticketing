@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { STATUS_LABELS, PRIORITY_LABELS, STATUS_CLASSES, PRIORITY_CLASSES } from "@/lib/tickets";
+import { DownloadReportButton } from "@/components/DownloadReportButton";
 
 export const metadata = { title: "Reportes" };
 
@@ -16,6 +17,16 @@ export default async function ReportsPage() {
 
   const clientFilter =
     user.roleKey === "SUPERADMIN" ? {} : { clientId: user.clientId ?? "__none__" };
+
+  // ── Clientes (para selector de descarga SUPERADMIN) ────────────────────────
+  const allClients =
+    user.roleKey === "SUPERADMIN"
+      ? await prisma.clientCompany.findMany({
+          where: { isActive: true },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : [];
 
   // ── Rango de fechas ────────────────────────────────────────────────────────
   const now = new Date();
@@ -120,9 +131,16 @@ export default async function ReportsPage() {
   return (
     <div className="min-h-full bg-[#0a0a0a] text-white">
       <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
-        <div className="mx-auto max-w-7xl">
-          <h1 className="text-2xl font-bold">Reportes</h1>
-          <p className="mt-1 text-sm text-zinc-500">Resumen de operaciones de soporte</p>
+        <div className="mx-auto max-w-7xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Reportes</h1>
+            <p className="mt-1 text-sm text-zinc-500">Resumen de operaciones de soporte</p>
+          </div>
+          <DownloadReportButton
+            clients={allClients}
+            isSuperAdmin={user.roleKey === "SUPERADMIN"}
+            defaultClientId={user.clientId}
+          />
         </div>
       </section>
 

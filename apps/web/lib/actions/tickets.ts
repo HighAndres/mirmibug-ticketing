@@ -11,6 +11,7 @@ import {
 } from "@/lib/mailer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenant } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Crear ticket
@@ -87,6 +88,7 @@ export async function changeTicketStatus(ticketId: string, status: string) {
       folio: true,
       title: true,
       priority: true,
+      requesterId: true,
       requester: { select: { id: true, email: true, name: true } },
       assignee: { select: { id: true, email: true, name: true } },
     },
@@ -94,19 +96,18 @@ export async function changeTicketStatus(ticketId: string, status: string) {
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  // CLIENT_USER solo puede cerrar sus propios tickets
-  if (
-    user.roleKey === "CLIENT_USER" &&
-    !["CLOSED"].includes(status)
-  ) {
-    throw new Error("Sin permisos para cambiar estatus");
+  // Autorización: CLIENT_USER solo puede cerrar SUS PROPIOS tickets
+  if (user.roleKey === "CLIENT_USER") {
+    if (ticket.requesterId !== user.id) {
+      throw new Error("Sin permisos para este ticket");
+    }
+    if (status !== "CLOSED") {
+      throw new Error("Sin permisos para cambiar estatus");
+    }
   }
 
-  // Multitenencia: cliente no puede tocar tickets de otro cliente
-  if (
-    user.roleKey !== "SUPERADMIN" &&
-    user.clientId !== ticket.clientId
-  ) {
+  // Multitenencia: verificar mismo tenant
+  if (!isSameTenant(user, ticket.clientId)) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -151,7 +152,7 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 
   const { user } = session;
 
-  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_SUPERVISOR"].includes(user.roleKey)) {
+  if (!canManageTickets(user.roleKey)) {
     throw new Error("Sin permisos para asignar tickets");
   }
 
@@ -169,7 +170,7 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (user.roleKey !== "SUPERADMIN" && user.clientId !== ticket.clientId) {
+  if (!isSameTenant(user, ticket.clientId)) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -222,7 +223,7 @@ export async function changeTicketPriority(ticketId: string, newPriority: string
 
   const { user } = session;
 
-  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT"].includes(user.roleKey)) {
+  if (!canManageTickets(user.roleKey)) {
     throw new Error("Sin permisos para cambiar la prioridad");
   }
 
@@ -238,7 +239,7 @@ export async function changeTicketPriority(ticketId: string, newPriority: string
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (user.roleKey !== "SUPERADMIN" && user.clientId !== ticket.clientId) {
+  if (!isSameTenant(user, ticket.clientId)) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -278,7 +279,7 @@ export async function validateTicketPriority(ticketId: string) {
 
   const { user } = session;
 
-  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT"].includes(user.roleKey)) {
+  if (!canManageTickets(user.roleKey)) {
     throw new Error("Sin permisos para validar la prioridad");
   }
 
@@ -289,7 +290,7 @@ export async function validateTicketPriority(ticketId: string) {
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (user.roleKey !== "SUPERADMIN" && user.clientId !== ticket.clientId) {
+  if (!isSameTenant(user, ticket.clientId)) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -334,7 +335,7 @@ export async function addComment(formData: FormData) {
   if (!content?.trim()) return;
 
   // Solo agentes/admins pueden hacer notas internas
-  if (isInternal && user.roleKey === "CLIENT_USER") {
+  if (isInternal && !canWriteInternalNotes(user.roleKey)) {
     throw new Error("Sin permisos para notas internas");
   }
 
@@ -342,6 +343,7 @@ export async function addComment(formData: FormData) {
     where: { id: ticketId },
     select: {
       clientId: true,
+      requesterId: true,
       folio: true,
       title: true,
       status: true,
@@ -353,7 +355,8 @@ export async function addComment(formData: FormData) {
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (user.roleKey !== "SUPERADMIN" && user.clientId !== ticket.clientId) {
+  // Autorización: CLIENT_USER solo puede comentar en SUS PROPIOS tickets
+  if (!canModifyTicket(user, ticket)) {
     throw new Error("Sin permisos para este ticket");
   }
 
