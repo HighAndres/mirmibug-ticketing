@@ -12,6 +12,8 @@ import {
   changeTicketStatus,
   assignTicket,
   addComment,
+  changeTicketPriority,
+  validateTicketPriority,
 } from "@/lib/actions/tickets";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -58,6 +60,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
       category: true,
       requester: { include: { role: { select: { name: true } } } },
       assignee: { include: { role: { select: { name: true } } } },
+      priorityValidatedBy: { select: { name: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         include: {
@@ -135,6 +138,16 @@ export default async function TicketDetailPage({ params }: PageProps) {
                 >
                   {PRIORITY_LABELS[ticket.priority]}
                 </span>
+                {!ticket.priorityValidated && (
+                  <span className="inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
+                    Prioridad sin validar
+                  </span>
+                )}
+                {ticket.priorityValidated && (
+                  <span className="inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    Prioridad validada
+                  </span>
+                )}
               </div>
               <h1 className="mt-1 text-xl font-semibold">{ticket.title}</h1>
             </div>
@@ -312,6 +325,70 @@ export default async function TicketDetailPage({ params }: PageProps) {
               </div>
             </dl>
           </div>
+
+          {/* Prioridad */}
+          {canManage && (
+            <div className="rounded-2xl border border-white/10 bg-[#111111] p-5 space-y-3">
+              <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+                Prioridad
+              </h2>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_CLASSES[ticket.priority] ?? ""}`}
+                >
+                  {PRIORITY_LABELS[ticket.priority]}
+                </span>
+                {ticket.priorityValidated ? (
+                  <span className="text-[10px] text-emerald-400">
+                    Validada por {ticket.priorityValidatedBy?.name}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-yellow-400">
+                    Pendiente de validación
+                  </span>
+                )}
+              </div>
+
+              {/* Cambiar prioridad */}
+              <form action={async (fd: FormData) => {
+                "use server";
+                const val = fd.get("priority") as string;
+                if (val && val !== ticket.priority) {
+                  await changeTicketPriority(ticket.id, val);
+                }
+              }}>
+                <label className="block text-xs text-zinc-500 mb-1">Cambiar prioridad</label>
+                <select
+                  name="priority"
+                  defaultValue={ticket.priority}
+                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
+                >
+                  <option value="LOW">Baja</option>
+                  <option value="MEDIUM">Media</option>
+                  <option value="HIGH">Alta</option>
+                  <option value="URGENT">Urgente</option>
+                </select>
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-white/10 py-2 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
+                >
+                  Actualizar prioridad
+                </button>
+              </form>
+
+              {/* Validar prioridad actual */}
+              {!ticket.priorityValidated && (
+                <form action={validateTicketPriority.bind(null, ticket.id)}>
+                  <button
+                    type="submit"
+                    className="w-full rounded-xl bg-emerald-600/20 border border-emerald-500/30 py-2 text-sm text-emerald-400 transition hover:bg-emerald-600/30 hover:text-emerald-300"
+                  >
+                    Validar prioridad actual
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
 
           {/* Asignación */}
           {canManage && (

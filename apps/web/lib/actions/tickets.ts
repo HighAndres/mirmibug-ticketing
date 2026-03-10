@@ -214,6 +214,110 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 }
 
 // ---------------------------------------------------------------------------
+// Cambiar prioridad (solo SUPERADMIN, CLIENT_ADMIN, AGENT)
+// ---------------------------------------------------------------------------
+export async function changeTicketPriority(ticketId: string, newPriority: string) {
+  const session = await auth();
+  if (!session) throw new Error("No autenticado");
+
+  const { user } = session;
+
+  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT"].includes(user.roleKey)) {
+    throw new Error("Sin permisos para cambiar la prioridad");
+  }
+
+  const validPriorities = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+  if (!validPriorities.includes(newPriority)) {
+    throw new Error("Prioridad no válida");
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { clientId: true, priority: true, folio: true },
+  });
+
+  if (!ticket) throw new Error("Ticket no encontrado");
+
+  if (user.roleKey !== "SUPERADMIN" && user.clientId !== ticket.clientId) {
+    throw new Error("Sin permisos para este ticket");
+  }
+
+  const previousPriority = ticket.priority;
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      priority: newPriority as "LOW" | "MEDIUM" | "HIGH" | "URGENT",
+      priorityValidated: true,
+      priorityValidatedById: user.id,
+      priorityValidatedAt: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "Ticket",
+      entityId: ticketId,
+      description: `Prioridad de ${ticket.folio} cambiada de ${previousPriority} a ${newPriority}`,
+      actorId: user.id,
+      metadataJson: JSON.stringify({ field: "priority", from: previousPriority, to: newPriority }),
+    },
+  });
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/tickets");
+}
+
+// ---------------------------------------------------------------------------
+// Validar prioridad (confirmar que la prioridad actual es correcta)
+// ---------------------------------------------------------------------------
+export async function validateTicketPriority(ticketId: string) {
+  const session = await auth();
+  if (!session) throw new Error("No autenticado");
+
+  const { user } = session;
+
+  if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT"].includes(user.roleKey)) {
+    throw new Error("Sin permisos para validar la prioridad");
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { clientId: true, folio: true, priority: true },
+  });
+
+  if (!ticket) throw new Error("Ticket no encontrado");
+
+  if (user.roleKey !== "SUPERADMIN" && user.clientId !== ticket.clientId) {
+    throw new Error("Sin permisos para este ticket");
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      priorityValidated: true,
+      priorityValidatedById: user.id,
+      priorityValidatedAt: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "Ticket",
+      entityId: ticketId,
+      description: `Prioridad "${ticket.priority}" de ${ticket.folio} validada`,
+      actorId: user.id,
+      metadataJson: JSON.stringify({ field: "priorityValidation", priority: ticket.priority }),
+    },
+  });
+
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath("/tickets");
+}
+
+// ---------------------------------------------------------------------------
 // Agregar comentario
 // ---------------------------------------------------------------------------
 export async function addComment(formData: FormData) {
