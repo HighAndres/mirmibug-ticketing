@@ -365,8 +365,13 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_CLASSES[ticket.priority] ?? ""}`}>
-                          {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${PRIORITY_CLASSES[ticket.priority] ?? ""}`}>
+                            {PRIORITY_LABELS[ticket.priority] ?? ticket.priority}
+                          </span>
+                          {!ticket.priorityValidated && (
+                            <span className="h-2 w-2 rounded-full bg-yellow-400 shrink-0" title="Prioridad sin validar" />
+                          )}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-xs text-zinc-500 whitespace-nowrap">
