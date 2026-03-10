@@ -15,6 +15,7 @@ import {
   changeTicketPriority,
   validateTicketPriority,
 } from "@/lib/actions/tickets";
+import { canAccessTicket, canManageTickets } from "@/lib/permissions";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -72,15 +73,12 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   if (!ticket) notFound();
 
-  // Multitenencia
-  if (
-    user.roleKey !== "SUPERADMIN" &&
-    ticket.clientId !== user.clientId
-  ) {
+  // Autorización: multitenencia + CLIENT_USER solo ve sus propios tickets
+  if (!canAccessTicket(user, ticket)) {
     notFound();
   }
 
-  const canManage = ["SUPERADMIN", "CLIENT_ADMIN", "AGENT"].includes(user.roleKey);
+  const canManage = canManageTickets(user.roleKey);
 
   // Agentes disponibles para asignar
   const agents = canManage

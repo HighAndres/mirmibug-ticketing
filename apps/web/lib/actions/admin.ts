@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import fs from "fs/promises";
 import path from "path";
+import { validateRoleAssignment } from "@/lib/permissions";
 
 // ── Guard helper ──────────────────────────────────────────────────────────────
 
@@ -40,6 +41,9 @@ export async function createUser(formData: FormData) {
   if (!name || !email || !password || !roleId) {
     throw new Error("Nombre, email, contraseña y rol son requeridos");
   }
+
+  // Validar que el actor puede asignar este rol (anti escalación)
+  await validateRoleAssignment(roleId, actor.roleKey, prisma);
 
   const hashed = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
@@ -78,6 +82,9 @@ export async function updateUser(id: string, formData: FormData) {
   const clientId =
     actor.roleKey === "SUPERADMIN" ? rawClientId || null : existing.clientId;
   const isActive = formData.get("isActive") === "on";
+
+  // Validar que el actor puede asignar este rol (anti escalación)
+  await validateRoleAssignment(roleId, actor.roleKey, prisma);
 
   const data: Record<string, unknown> = {
     name,

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { updateUser } from "@/lib/actions/admin";
+import { filterAssignableRoles } from "@/lib/permissions";
 
 export const metadata = { title: "Editar usuario" };
 
@@ -18,7 +19,7 @@ export default async function EditUserPage({
   const { user: actor } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(actor.roleKey)) redirect("/dashboard");
 
-  const [targetUser, roles, clients] = await Promise.all([
+  const [targetUser, allRoles, clients] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
       include: { role: true, client: true },
@@ -35,6 +36,9 @@ export default async function EditUserPage({
 
   if (!targetUser) notFound();
   if (actor.roleKey === "CLIENT_ADMIN" && targetUser.clientId !== actor.clientId) notFound();
+
+  // Filtrar roles según lo que el actor puede asignar (anti escalación)
+  const roles = filterAssignableRoles(allRoles, actor.roleKey);
 
   const updateAction = updateUser.bind(null, id);
 
