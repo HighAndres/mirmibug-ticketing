@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { MobileMenuButton, MobileSidebarWrapper } from "@/components/MobileSidebar";
 
 // ---------------------------------------------------------------------------
 // Definición de navegación por rol
@@ -54,6 +55,102 @@ function LogoutButton() {
 }
 
 // ---------------------------------------------------------------------------
+// Contenido reutilizable del sidebar (para desktop y mobile)
+// ---------------------------------------------------------------------------
+function SidebarContent({
+  user,
+  visibleNavItems,
+  clientBranding,
+  primary,
+  accent,
+}: {
+  user: { name: string; email: string; roleKey: string; roleName: string; clientName: string | null };
+  visibleNavItems: NavItem[];
+  clientBranding: { logoUrl: string | null } | null;
+  primary: string;
+  accent: string;
+}) {
+  return (
+    <>
+      {/* Logo / Brand */}
+      <div className="border-b border-white/10 px-5 py-4">
+        {clientBranding?.logoUrl ? (
+          <div className="flex items-center gap-3">
+            <img
+              src={clientBranding.logoUrl}
+              alt={user.clientName ?? "Logo"}
+              className="h-8 w-auto max-w-[120px] object-contain"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Image
+              src="/branding/mirmibug-logo-green_sfondo.png"
+              alt="Mirmibug"
+              width={36}
+              height={36}
+              className="shrink-0"
+            />
+            <div>
+              <p
+                className="text-xs font-medium uppercase tracking-[0.2em]"
+                style={{ color: accent }}
+              >
+                {user.clientName ?? "Mirmibug"}
+              </p>
+              <p className="mt-0.5 text-xs text-zinc-500">IT Services Platform</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Información del usuario */}
+      <div className="border-b border-white/10 px-5 py-4">
+        <p className="text-sm font-medium text-white">{user.name}</p>
+        <p className="text-xs text-zinc-500">{user.email}</p>
+        <div className="mt-2 flex items-center gap-2">
+          <span
+            className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+            style={{
+              borderColor: `${primary}4d`,
+              backgroundColor: `${primary}1a`,
+              color: accent,
+              border: `1px solid ${primary}4d`,
+            }}
+          >
+            {user.roleName}
+          </span>
+        </div>
+        {user.clientName && (
+          <p className="mt-1 text-xs text-zinc-600">{user.clientName}</p>
+        )}
+      </div>
+
+      {/* Navegación */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <ul className="space-y-1">
+          {visibleNavItems.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="flex items-center rounded-xl px-3 py-2 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* Logout */}
+      <div className="border-t border-white/10 px-3 py-4">
+        <LogoutButton />
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Layout principal
 // ---------------------------------------------------------------------------
 export default async function AppLayout({
@@ -85,91 +182,62 @@ export default async function AppLayout({
   const primary = clientBranding?.primaryColor ?? "#38d84e";
   const accent = clientBranding?.accentColor ?? "#7CFF8D";
 
+  const sidebarProps = {
+    user: {
+      name: user.name ?? "",
+      email: user.email ?? "",
+      roleKey: user.roleKey,
+      roleName: user.roleName,
+      clientName: user.clientName,
+    },
+    visibleNavItems,
+    clientBranding: clientBranding ? { logoUrl: clientBranding.logoUrl } : null,
+    primary,
+    accent,
+  };
+
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-white">
 
-      {/* ---- Sidebar ---- */}
-      <aside className="flex w-64 flex-col border-r border-white/10 bg-[#0f0f0f]">
-
-        {/* Logo / Brand */}
-        <div className="border-b border-white/10 px-5 py-5">
-          {clientBranding?.logoUrl ? (
-            <div className="flex items-center gap-3">
-              <img
-                src={clientBranding.logoUrl}
-                alt={user.clientName ?? "Logo"}
-                className="h-8 w-auto max-w-[120px] object-contain"
-              />
-            </div>
-          ) : (
-            <>
-              <p
-                className="text-xs font-medium uppercase tracking-[0.2em]"
-                style={{ color: accent }}
-              >
-                {user.clientName ?? "Mirmibug"}
-              </p>
-              <p className="mt-0.5 text-xs text-zinc-500">IT Services Platform</p>
-            </>
-          )}
-        </div>
-
-        {/* Información del usuario */}
-        <div className="border-b border-white/10 px-5 py-4">
-          <p className="text-sm font-medium text-white">{user.name}</p>
-          <p className="text-xs text-zinc-500">{user.email}</p>
-          <div className="mt-2 flex items-center gap-2">
-            <span
-              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-              style={{
-                borderColor: `${primary}4d`,
-                backgroundColor: `${primary}1a`,
-                color: accent,
-                border: `1px solid ${primary}4d`,
-              }}
-            >
-              {user.roleName}
-            </span>
-          </div>
-          {user.clientName && (
-            <p className="mt-1 text-xs text-zinc-600">{user.clientName}</p>
-          )}
-        </div>
-
-        {/* Navegación */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="space-y-1">
-            {visibleNavItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="flex items-center rounded-xl px-3 py-2 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Logout */}
-        <div className="border-t border-white/10 px-3 py-4">
-          <LogoutButton />
-        </div>
+      {/* ---- Sidebar Desktop (oculto en mobile) ---- */}
+      <aside className="hidden lg:flex w-64 flex-col border-r border-white/10 bg-[#0f0f0f] shrink-0">
+        <SidebarContent {...sidebarProps} />
       </aside>
 
+      {/* ---- Sidebar Mobile (slide-over) ---- */}
+      <MobileSidebarWrapper>
+        <SidebarContent {...sidebarProps} />
+      </MobileSidebarWrapper>
+
       {/* ---- Contenido principal ---- */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
 
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-white/10 bg-[#0f0f0f] px-6 py-3">
-          <div />
+        <header className="flex items-center justify-between border-b border-white/10 bg-[#0f0f0f] px-4 py-3 lg:px-6">
+          {/* Mobile: logo + hamburger */}
+          <div className="flex items-center gap-3 lg:hidden">
+            <Image
+              src="/branding/mirmibug-logo-green_sfondo.png"
+              alt="Mirmibug"
+              width={28}
+              height={28}
+              className="shrink-0"
+            />
+            <span className="text-sm font-medium text-[#7CFF8D]">
+              {user.clientName ?? "Mirmibug"}
+            </span>
+          </div>
+
+          {/* Desktop: vacío a la izquierda */}
+          <div className="hidden lg:block" />
+
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-500">
+            <span className="hidden sm:inline text-xs text-zinc-500">
               {user.clientName ?? "Global — Mirmibug"}
             </span>
-            <div className="h-3 w-px bg-white/10" />
-            <span className="text-xs text-zinc-400">{user.name}</span>
+            <div className="hidden sm:block h-3 w-px bg-white/10" />
+            <span className="hidden sm:inline text-xs text-zinc-400">{user.name}</span>
+            <MobileMenuButton />
           </div>
         </header>
 

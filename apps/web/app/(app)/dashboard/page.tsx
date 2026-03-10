@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
 // ---------------------------------------------------------------------------
 // Helpers de etiquetas y estilos (mismos que antes, centralizados aquí)
@@ -113,18 +114,27 @@ export default async function DashboardPage() {
       <section className="border-b border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0a0a0a]">
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="mb-2 inline-block rounded-full border border-[#38d84e]/30 bg-[#38d84e]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-[#7CFF8D]">
-                {isSuperAdmin ? "Vista global" : user.clientName ?? "Mi empresa"}
-              </p>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-                Dashboard
-              </h1>
-              <p className="mt-2 text-sm text-zinc-400">
-                {isSuperAdmin
-                  ? "Control global del sistema multiempresa"
-                  : `Panel operativo — ${user.clientName}`}
-              </p>
+            <div className="flex items-center gap-5">
+              <Image
+                src="/branding/mirmibug-logo-green_sfondo.png"
+                alt="Mirmibug"
+                width={56}
+                height={56}
+                className="shrink-0 hidden md:block"
+              />
+              <div>
+                <p className="mb-2 inline-block rounded-full border border-[#38d84e]/30 bg-[#38d84e]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-[#7CFF8D]">
+                  {isSuperAdmin ? "Vista global" : user.clientName ?? "Mi empresa"}
+                </p>
+                <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+                  Dashboard
+                </h1>
+                <p className="mt-2 text-sm text-zinc-400">
+                  {isSuperAdmin
+                    ? "Control global del sistema multiempresa"
+                    : `Panel operativo — ${user.clientName}`}
+                </p>
+              </div>
             </div>
           </div>
         </div>
