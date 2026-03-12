@@ -66,7 +66,7 @@ export async function createTicket(formData: FormData) {
   });
 
   // Email: notificar al solicitante
-  notifyTicketCreated(user.email, user.name, ticket).catch(console.error);
+  notifyTicketCreated(user.email ?? "", user.name ?? "", ticket).catch(console.error);
 
   redirect(`/tickets/${ticket.id}`);
 }

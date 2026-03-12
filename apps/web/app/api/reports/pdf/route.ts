@@ -188,7 +188,7 @@ export async function GET(request: Request) {
   const dateTag = now.toISOString().slice(0, 10);
   const filename = `reporte_${safeClient}_${dateTag}.pdf`;
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(pdfBuffer as unknown as BodyInit, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
