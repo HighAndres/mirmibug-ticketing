@@ -38,7 +38,7 @@ export default async function EditUserPage({
   if (actor.roleKey === "CLIENT_ADMIN" && targetUser.clientId !== actor.clientId) notFound();
 
   // Filtrar roles según lo que el actor puede asignar (anti escalación)
-  const roles = filterAssignableRoles(allRoles, actor.roleKey);
+  const roles = filterAssignableRoles(allRoles, actor.roleKey) as typeof allRoles;
 
   const updateAction = updateUser.bind(null, id);
 
