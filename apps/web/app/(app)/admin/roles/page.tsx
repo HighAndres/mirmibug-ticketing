@@ -59,7 +59,7 @@ export default async function RolesPage() {
             </div>
             {role.rolePermissions.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                {role.rolePermissions.map((rp) => (
+                {role.rolePermissions.map((rp: (typeof role.rolePermissions)[number]) => (
                   <span
                     key={rp.id}
                     className="rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-xs text-zinc-400 font-mono"

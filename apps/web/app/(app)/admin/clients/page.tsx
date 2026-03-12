@@ -62,7 +62,7 @@ export default async function ClientsPage() {
                     </td>
                   </tr>
                 ) : (
-                  clients.map((c) => (
+                  clients.map((c: (typeof clients)[number]) => (
                     <tr
                       key={c.id}
                       className="border-t border-white/5 transition hover:bg-white/[0.03]"

@@ -114,7 +114,7 @@ export default async function CompanyAuditPage({ searchParams }: PageProps) {
               className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="">Todos los miembros</option>
-              {teamMembers.map((m) => (
+              {teamMembers.map((m: (typeof teamMembers)[number]) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>

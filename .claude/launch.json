@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "web (Next.js dev)",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "C:/Program Files/nodejs/npx",
       "runtimeArgs": ["next", "dev", "apps/web", "--port", "3001"],
       "port": 3001,
       "autoPort": false

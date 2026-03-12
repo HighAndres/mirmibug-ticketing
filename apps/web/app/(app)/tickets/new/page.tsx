@@ -68,7 +68,7 @@ export default async function NewTicketPage() {
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
                 >
                   <option value="">Selecciona un cliente</option>
-                  {clients.map((c) => (
+                  {clients.map((c: (typeof clients)[number]) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
@@ -138,7 +138,7 @@ export default async function NewTicketPage() {
                           ))}
                         </optgroup>
                       ))
-                    : categories.map((cat) => (
+                    : categories.map((cat: (typeof categories)[number]) => (
                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                       ))}
                 </select>

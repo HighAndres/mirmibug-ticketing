@@ -83,7 +83,7 @@ export default async function ReportsPage() {
 
   // Cargar nombres de los agentes
   const agentIds = byAssigneeRaw
-    .map((r) => r.assigneeId)
+    .map((r: (typeof byAssigneeRaw)[number]) => r.assigneeId)
     .filter(Boolean) as string[];
 
   const agentNames = agentIds.length
@@ -93,9 +93,9 @@ export default async function ReportsPage() {
       })
     : [];
 
-  const agentNameMap = Object.fromEntries(agentNames.map((a) => [a.id, a.name]));
+  const agentNameMap = Object.fromEntries(agentNames.map((a: (typeof agentNames)[number]) => [a.id, a.name]));
 
-  const byAssignee = byAssigneeRaw.map((r) => ({
+  const byAssignee = byAssigneeRaw.map((r: (typeof byAssigneeRaw)[number]) => ({
     name: agentNameMap[r.assigneeId!] ?? "Desconocido",
     count: r._count.id,
   }));
@@ -148,7 +148,7 @@ export default async function ReportsPage() {
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {kpis.map((kpi) => (
+          {kpis.map((kpi: (typeof kpis)[number]) => (
             <div key={kpi.label} className="rounded-2xl border border-white/10 bg-[#111111] p-5">
               <p className="text-xs text-zinc-500 uppercase tracking-wide leading-tight">{kpi.label}</p>
               <p className={`mt-2 text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
@@ -171,7 +171,7 @@ export default async function ReportsPage() {
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
             ) : (
               <div className="space-y-3">
-                {byStatus.map((s) => (
+                {byStatus.map((s: (typeof byStatus)[number]) => (
                   <div key={s.status} className="flex items-center gap-3">
                     <span
                       className={`inline-flex w-28 flex-shrink-0 justify-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -211,7 +211,7 @@ export default async function ReportsPage() {
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
             ) : (
               <div className="space-y-3">
-                {byPriority.map((p) => (
+                {byPriority.map((p: (typeof byPriority)[number]) => (
                   <div key={p.priority} className="flex items-center gap-3">
                     <span
                       className={`inline-flex w-28 flex-shrink-0 justify-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
@@ -263,7 +263,7 @@ export default async function ReportsPage() {
             </p>
           ) : (
             <div className="space-y-3">
-              {byAssignee.map((a) => (
+              {byAssignee.map((a: (typeof byAssignee)[number]) => (
                 <div key={a.name} className="flex items-center gap-3">
                   <span className="w-36 flex-shrink-0 text-sm text-zinc-300 truncate">{a.name}</span>
                   <div className="flex flex-1 items-center gap-3">

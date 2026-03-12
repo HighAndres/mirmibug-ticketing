@@ -150,7 +150,7 @@ export default async function DashboardPage() {
               { label: "Roles", value: totalRoles, sub: "Roles del sistema" },
               { label: "Permisos", value: totalPermissions, sub: "Permisos granulares" },
               { label: "Auditorías", value: totalAuditLogs, sub: "Registros de actividad" },
-            ].map((stat) => (
+            ].map((stat: { label: string; value: number; sub: string }) => (
               <div
                 key={stat.label}
                 className="rounded-2xl border border-white/10 bg-[#111111] p-5"
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
             { label: "Abiertos", value: openTickets, color: "text-blue-300" },
             { label: "En progreso", value: inProgressTickets, color: "text-yellow-300" },
             { label: "Resueltos", value: resolvedTickets, color: "text-emerald-300" },
-          ].map((stat) => (
+          ].map((stat: { label: string; value: number; color: string }) => (
             <div
               key={stat.label}
               className="rounded-2xl border border-white/10 bg-[#111111] p-6"
@@ -198,7 +198,7 @@ export default async function DashboardPage() {
                 { label: "Abiertos", value: openTickets, color: "bg-blue-400" },
                 { label: "En progreso", value: inProgressTickets, color: "bg-yellow-400" },
                 { label: "Resueltos", value: resolvedTickets, color: "bg-emerald-400" },
-              ].map((bar) => (
+              ].map((bar: { label: string; value: number; color: string }) => (
                 <div key={bar.label}>
                   <div className="mb-2 flex items-center justify-between text-sm">
                     <span className="text-zinc-400">{bar.label}</span>
@@ -222,7 +222,7 @@ export default async function DashboardPage() {
             <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
               <h2 className="text-lg font-semibold">Usuarios recientes</h2>
               <div className="mt-4 space-y-3">
-                {latestUsers.map((u) => (
+                {latestUsers.map((u: (typeof latestUsers)[number]) => (
                   <div
                     key={u.id}
                     className="rounded-xl border border-white/10 bg-white/[0.03] p-3"

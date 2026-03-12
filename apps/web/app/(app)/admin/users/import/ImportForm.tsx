@@ -66,7 +66,7 @@ export default function ImportForm({ isSuperAdmin }: { isSuperAdmin: boolean }) 
                     : "Se asigna automáticamente a tu empresa",
                   req: "No",
                 },
-              ].map((r) => (
+              ].map((r: { col: string; desc: string; req: string }) => (
                 <tr key={r.col} className="border-t border-white/5">
                   <td className="px-4 py-2 font-mono text-[#7CFF8D]">{r.col}</td>
                   <td className="px-4 py-2 text-zinc-400">{r.desc}</td>

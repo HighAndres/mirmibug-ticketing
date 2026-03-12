@@ -83,7 +83,7 @@ export default async function UsersPage() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
+                  users.map((u: (typeof users)[number]) => (
                     <tr
                       key={u.id}
                       className="border-t border-white/5 transition hover:bg-white/[0.03]"
