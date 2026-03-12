@@ -29,7 +29,7 @@ export default async function RolesPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-6 space-y-4">
-        {roles.map((role) => (
+        {roles.map((role: (typeof roles)[number]) => (
           <div key={role.id} className="rounded-2xl border border-white/10 bg-[#111111] p-5">
             <div className="flex items-start justify-between">
               <div>

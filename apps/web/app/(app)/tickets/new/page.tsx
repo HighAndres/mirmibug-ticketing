@@ -133,7 +133,7 @@ export default async function NewTicketPage() {
                         )
                       ).map(([clientName, cats]) => (
                         <optgroup key={clientName} label={clientName}>
-                          {cats.map((cat) => (
+                          {cats.map((cat: (typeof categories)[number]) => (
                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                           ))}
                         </optgroup>

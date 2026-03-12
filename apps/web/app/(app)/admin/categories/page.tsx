@@ -70,7 +70,7 @@ export default async function CategoriesPage() {
                     </td>
                   </tr>
                 ) : (
-                  categories.map((cat) => (
+                  categories.map((cat: (typeof categories)[number]) => (
                     <tr
                       key={cat.id}
                       className="border-t border-white/5 transition hover:bg-white/[0.03]"

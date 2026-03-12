@@ -129,7 +129,7 @@ function SidebarContent({
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
-          {visibleNavItems.map((item) => (
+          {visibleNavItems.map((item: (typeof visibleNavItems)[number]) => (
             <li key={item.href}>
               <Link
                 href={item.href}

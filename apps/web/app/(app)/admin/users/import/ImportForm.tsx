@@ -150,7 +150,7 @@ export default function ImportForm({ isSuperAdmin }: { isSuperAdmin: boolean }) 
                   </tr>
                 </thead>
                 <tbody>
-                  {result.rows.map((row) => (
+                  {result.rows.map((row: (typeof result.rows)[number]) => (
                     <tr key={row.row} className="border-t border-white/5">
                       <td className="px-4 py-2 text-zinc-600">{row.row}</td>
                       <td className="px-4 py-2 text-zinc-300">{row.name || "—"}</td>

@@ -460,7 +460,7 @@ export async function importUsers(
   const text = await file.text();
   const lines = text
     .split(/\r?\n/)
-    .map((l) => l.trim())
+    .map((l: string) => l.trim())
     .filter(Boolean);
 
   if (lines.length < 2) {
@@ -472,12 +472,12 @@ export async function importUsers(
 
   // Cache roles and clients for quick lookup
   const roles = await prisma.role.findMany({ select: { id: true, key: true } });
-  const roleMap = Object.fromEntries(roles.map((r) => [r.key.toUpperCase(), r.id]));
+  const roleMap = Object.fromEntries(roles.map((r: (typeof roles)[number]) => [r.key.toUpperCase(), r.id]));
 
   const clients = actor.roleKey === "SUPERADMIN"
     ? await prisma.clientCompany.findMany({ select: { id: true, slug: true } })
     : [];
-  const clientMap = Object.fromEntries(clients.map((c) => [c.id, c.id]));
+  const clientMap = Object.fromEntries(clients.map((c: (typeof clients)[number]) => [c.id, c.id]));
 
   const rows: ImportRow[] = [];
   let success = 0;

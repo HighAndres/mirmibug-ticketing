@@ -291,7 +291,7 @@ export default async function DashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  latestTickets.map((ticket) => (
+                  latestTickets.map((ticket: (typeof latestTickets)[number]) => (
                     <tr
                       key={ticket.id}
                       className="border-t border-white/5 transition hover:bg-white/[0.03]"

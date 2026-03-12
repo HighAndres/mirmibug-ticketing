@@ -124,7 +124,7 @@ export async function GET(request: Request) {
 
   // Agent names for assignee stats
   const agentIds = byAssigneeRaw
-    .map((r) => r.assigneeId)
+    .map((r: (typeof byAssigneeRaw)[number]) => r.assigneeId)
     .filter(Boolean) as string[];
 
   const agentNames = agentIds.length
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
       })
     : [];
 
-  const agentNameMap = Object.fromEntries(agentNames.map((a) => [a.id, a.name]));
+  const agentNameMap = Object.fromEntries(agentNames.map((a: (typeof agentNames)[number]) => [a.id, a.name]));
 
   // ── Build report data ─────────────────────────────────────────────────
   const reportData: ReportData = {
@@ -149,24 +149,24 @@ export async function GET(request: Request) {
     thisWeekTickets,
     lastWeekTickets,
 
-    byStatus: byStatusRaw.map((s) => ({
+    byStatus: byStatusRaw.map((s: (typeof byStatusRaw)[number]) => ({
       status: s.status,
       label: STATUS_LABELS[s.status] ?? s.status,
       count: s._count.id,
     })),
 
-    byPriority: byPriorityRaw.map((p) => ({
+    byPriority: byPriorityRaw.map((p: (typeof byPriorityRaw)[number]) => ({
       priority: p.priority,
       label: PRIORITY_LABELS[p.priority] ?? p.priority,
       count: p._count.id,
     })),
 
-    byAssignee: byAssigneeRaw.map((a) => ({
+    byAssignee: byAssigneeRaw.map((a: (typeof byAssigneeRaw)[number]) => ({
       name: agentNameMap[a.assigneeId!] ?? "Desconocido",
       count: a._count.id,
     })),
 
-    tickets: allTickets.map((t) => ({
+    tickets: allTickets.map((t: (typeof allTickets)[number]) => ({
       folio: t.folio,
       title: t.title,
       status: t.status,

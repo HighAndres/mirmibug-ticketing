@@ -154,7 +154,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
           {/* Cambio de estatus */}
           {allowedTransitions.length > 0 && (
             <div className="flex flex-wrap gap-2 shrink-0">
-              {allowedTransitions.map((s) => (
+              {allowedTransitions.map((s: (typeof allowedTransitions)[number]) => (
                 <form key={s} action={changeTicketStatus.bind(null, ticket.id, s)}>
                   <button
                     type="submit"
@@ -199,7 +199,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
               </p>
             ) : (
               <ul className="divide-y divide-white/5">
-                {visibleComments.map((comment) => {
+                {visibleComments.map((comment: (typeof visibleComments)[number]) => {
                   const isInternal = comment.isInternal;
                   return (
                     <li
@@ -410,7 +410,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
                   className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
                 >
                   <option value="">Sin asignar</option>
-                  {agents.map((a) => (
+                  {agents.map((a: (typeof agents)[number]) => (
                     <option key={a.id} value={a.id}>
                       {a.name} — {a.role.name}
                     </option>

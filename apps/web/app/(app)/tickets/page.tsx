@@ -266,7 +266,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
               >
                 <option value="">Cualquier asignado</option>
                 <option value="unassigned">Sin asignar</option>
-                {agents.map((a) => (
+                {agents.map((a: (typeof agents)[number]) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
@@ -322,7 +322,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                     </td>
                   </tr>
                 ) : (
-                  tickets.map((ticket) => (
+                  tickets.map((ticket: (typeof tickets)[number]) => (
                     <tr
                       key={ticket.id}
                       className="border-t border-white/5 transition hover:bg-white/[0.03]"
