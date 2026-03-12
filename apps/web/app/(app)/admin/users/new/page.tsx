@@ -26,7 +26,7 @@ export default async function NewUserPage() {
   ]);
 
   // Filtrar roles según lo que el actor puede asignar (anti escalación)
-  const roles = filterAssignableRoles(allRoles, user.roleKey);
+  const roles = filterAssignableRoles(allRoles, user.roleKey) as typeof allRoles;
 
   return (
     <div className="min-h-full bg-[#0a0a0a] text-white">
