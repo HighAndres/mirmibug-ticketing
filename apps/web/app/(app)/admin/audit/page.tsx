@@ -85,7 +85,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
                     </td>
                   </tr>
                 ) : (
-                  logs.map((log) => (
+                  logs.map((log: (typeof logs)[number]) => (
                     <tr
                       key={log.id}
                       className="border-t border-white/5 hover:bg-white/[0.03]"
