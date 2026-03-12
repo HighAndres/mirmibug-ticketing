@@ -44,7 +44,7 @@ function getAllowedTransitions(
 
   // Agentes, admins y superadmin tienen transición libre
   const all = ["OPEN", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"];
-  return all.filter((s) => s !== currentStatus);
+  return all.filter((s: string) => s !== currentStatus);
 }
 
 export default async function TicketDetailPage({ params }: PageProps) {

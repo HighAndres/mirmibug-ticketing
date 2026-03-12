@@ -65,7 +65,7 @@ export function DownloadReportButton({ clients, isSuperAdmin, defaultClientId }:
           className="rounded-lg border border-white/10 bg-[#111111] px-3 py-2 text-sm text-white focus:border-[#38d84e]/50 focus:outline-none focus:ring-1 focus:ring-[#38d84e]/30"
         >
           <option value="all">Todos los clientes</option>
-          {clients.map((c) => (
+          {clients.map((c: { id: string; name: string }) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>

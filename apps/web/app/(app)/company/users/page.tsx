@@ -26,7 +26,7 @@ export default async function CompanyUsersPage() {
     },
   });
 
-  const activeCount = users.filter((u) => u.isActive).length;
+  const activeCount = users.filter((u: (typeof users)[number]) => u.isActive).length;
   const inactiveCount = users.length - activeCount;
 
   return (

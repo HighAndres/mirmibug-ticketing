@@ -47,7 +47,7 @@ const roleDefinitions = [
     name: "Super Administrador",
     description: "Control total global del sistema.",
     isSystem: true,
-    permissions: permissionsData.map((p) => p.key),
+    permissions: permissionsData.map((p: (typeof permissionsData)[number]) => p.key),
   },
   {
     key: "CLIENT_ADMIN",

@@ -243,7 +243,7 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
       .text("Tickets por estado", doc.page.margins.left, distStartY);
 
     let sy = distStartY + 18;
-    data.byStatus.forEach((s) => {
+    data.byStatus.forEach((s: { status: string; label: string; count: number }) => {
       const pct = data.totalTickets > 0 ? (s.count / data.totalTickets) * 100 : 0;
       const barMaxW = distW - 100;
       const barW = Math.max(2, (pct / 100) * barMaxW);
@@ -279,7 +279,7 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
       .text("Tickets por prioridad", prioX, distStartY);
 
     let py = distStartY + 18;
-    data.byPriority.forEach((p) => {
+    data.byPriority.forEach((p: { priority: string; label: string; count: number }) => {
       const pct = data.totalTickets > 0 ? (p.count / data.totalTickets) * 100 : 0;
       const barMaxW = distW - 100;
       const barW = Math.max(2, (pct / 100) * barMaxW);
@@ -319,7 +319,7 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
       doc.y += 18;
       const maxA = data.byAssignee[0]?.count ?? 1;
 
-      data.byAssignee.forEach((a) => {
+      data.byAssignee.forEach((a: { name: string; count: number }) => {
         const barMaxW = pageWidth - 160;
         const barW = Math.max(2, (a.count / maxA) * barMaxW);
 
@@ -376,7 +376,7 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
     const headerY = doc.y;
     drawRoundedRect(doc.page.margins.left, headerY, pageWidth, 18, COLORS.card, 3);
 
-    cols.forEach((col) => {
+    cols.forEach((col: { label: string; w: number; x: number }) => {
       doc
         .fontSize(7)
         .fillColor(COLORS.textMuted)
