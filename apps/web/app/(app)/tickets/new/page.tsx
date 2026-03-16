@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createTicket } from "@/lib/actions/tickets";
 import Link from "next/link";
+import CategorySelect from "./category-select";
 
 export const metadata = { title: "Nuevo ticket" };
 
@@ -106,60 +107,32 @@ export default async function NewTicketPage() {
               />
             </div>
 
-            {/* Categoría + Prioridad en grid */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="categoryId" className="block text-sm font-medium text-zinc-400 mb-2">
-                  Categoría <span className="text-red-400">*</span>
-                </label>
-                <select
-                  id="categoryId"
-                  name="categoryId"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  <option value="">Selecciona categoría</option>
-                  {isSuperAdmin
-                    ? // Agrupadas por cliente si es superadmin
-                      Object.entries(
-                        categories.reduce<Record<string, typeof categories>>(
-                          (acc, cat) => {
-                            const key = cat.client.name;
-                            if (!acc[key]) acc[key] = [];
-                            acc[key].push(cat);
-                            return acc;
-                          },
-                          {}
-                        )
-                      ).map(([clientName, cats]) => (
-                        <optgroup key={clientName} label={clientName}>
-                          {cats.map((cat: (typeof categories)[number]) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                        </optgroup>
-                      ))
-                    : categories.map((cat: (typeof categories)[number]) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                </select>
-              </div>
+            {/* Categoría y Subcategoría */}
+            <CategorySelect
+              categories={categories.map((c: (typeof categories)[number]) => ({
+                id: c.id,
+                name: c.name,
+                client: { id: c.client.id, name: c.client.name },
+              }))}
+              isSuperAdmin={isSuperAdmin}
+            />
 
-              <div>
-                <label htmlFor="priority" className="block text-sm font-medium text-zinc-400 mb-2">
-                  Prioridad
-                </label>
-                <select
-                  id="priority"
-                  name="priority"
-                  defaultValue="MEDIUM"
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  <option value="LOW">Baja</option>
-                  <option value="MEDIUM">Media</option>
-                  <option value="HIGH">Alta</option>
-                  <option value="URGENT">Urgente</option>
-                </select>
-              </div>
+            {/* Prioridad */}
+            <div>
+              <label htmlFor="priority" className="block text-sm font-medium text-zinc-400 mb-2">
+                Prioridad
+              </label>
+              <select
+                id="priority"
+                name="priority"
+                defaultValue="MEDIUM"
+                className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
+              >
+                <option value="LOW">Baja</option>
+                <option value="MEDIUM">Media</option>
+                <option value="HIGH">Alta</option>
+                <option value="URGENT">Urgente</option>
+              </select>
             </div>
 
             {/* Acciones */}

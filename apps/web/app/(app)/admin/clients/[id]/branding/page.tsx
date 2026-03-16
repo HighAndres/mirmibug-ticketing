@@ -30,6 +30,7 @@ export default async function ClientBrandingPage({
       address: true,
       timezone: true,
       slaHours: true,
+      ticketPrefix: true,
     },
   });
 

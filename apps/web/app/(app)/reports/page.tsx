@@ -52,6 +52,7 @@ export default async function ReportsPage() {
     thisWeekTickets,
     lastWeekTickets,
     byAssigneeRaw,
+    byCategoryRaw,
   ] = await Promise.all([
     prisma.ticket.groupBy({ by: ["status"], where: clientFilter, _count: { id: true } }),
     prisma.ticket.groupBy({ by: ["priority"], where: clientFilter, _count: { id: true } }),
@@ -79,6 +80,14 @@ export default async function ReportsPage() {
       orderBy: { _count: { id: "desc" } },
       take: 10,
     }),
+    // Tickets por categoría (top 10)
+    prisma.ticket.groupBy({
+      by: ["categoryId"],
+      where: clientFilter,
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 10,
+    }),
   ]);
 
   // Cargar nombres de los agentes
@@ -99,6 +108,27 @@ export default async function ReportsPage() {
     name: agentNameMap[r.assigneeId!] ?? "Desconocido",
     count: r._count.id,
   }));
+
+  // Cargar nombres de categorías
+  const categoryIds = byCategoryRaw
+    .map((r: (typeof byCategoryRaw)[number]) => r.categoryId)
+    .filter(Boolean) as string[];
+
+  const categoryNames = categoryIds.length
+    ? await prisma.category.findMany({
+        where: { id: { in: categoryIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+
+  const categoryNameMap = Object.fromEntries(categoryNames.map((c: (typeof categoryNames)[number]) => [c.id, c.name]));
+
+  const byCategory = byCategoryRaw.map((r: (typeof byCategoryRaw)[number]) => ({
+    name: categoryNameMap[r.categoryId] ?? "Sin categoría",
+    count: r._count.id,
+  }));
+
+  const maxCategoryCount = byCategory[0]?.count ?? 1;
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const weekDelta = thisWeekTickets - lastWeekTickets;
@@ -245,45 +275,80 @@ export default async function ReportsPage() {
           </div>
         </div>
 
-        {/* By assignee */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-zinc-300">Tickets por agente</h2>
-            {unassignedTickets > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 border border-red-500/20 px-3 py-1 text-xs font-medium text-red-400">
-                {unassignedTickets} sin asignar
-              </span>
+        {/* By category & By assignee */}
+        <div className="grid gap-6 lg:grid-cols-2">
+
+          {/* By category */}
+          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+            <h2 className="text-sm font-semibold text-zinc-300 mb-4">Tickets por categoría</h2>
+            {byCategory.length === 0 ? (
+              <p className="text-sm text-zinc-600 italic">Sin datos</p>
+            ) : (
+              <div className="space-y-3">
+                {byCategory.map((c: (typeof byCategory)[number]) => (
+                  <div key={c.name} className="flex items-center gap-3">
+                    <span className="w-36 flex-shrink-0 text-sm text-zinc-300 truncate">{c.name}</span>
+                    <div className="flex flex-1 items-center gap-3">
+                      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full bg-sky-400 rounded-full"
+                          style={{ width: `${(c.count / maxCategoryCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-white w-8 text-right">
+                        {c.count}
+                      </span>
+                      <span className="text-xs text-zinc-600 w-10 text-right">
+                        {totalTickets ? Math.round((c.count / totalTickets) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-          {byAssignee.length === 0 ? (
-            <p className="text-sm text-zinc-600 italic">
-              {unassignedTickets > 0
-                ? "Todos los tickets están sin asignar."
-                : "Sin datos de asignación."}
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {byAssignee.map((a: (typeof byAssignee)[number]) => (
-                <div key={a.name} className="flex items-center gap-3">
-                  <span className="w-36 flex-shrink-0 text-sm text-zinc-300 truncate">{a.name}</span>
-                  <div className="flex flex-1 items-center gap-3">
-                    <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-                      <div
-                        className="h-full bg-[#38d84e] rounded-full"
-                        style={{ width: `${(a.count / maxAssigneeCount) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-semibold text-white w-8 text-right">
-                      {a.count}
-                    </span>
-                    <span className="text-xs text-zinc-600 w-10 text-right">
-                      {totalTickets ? Math.round((a.count / totalTickets) * 100) : 0}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+
+          {/* By assignee */}
+          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-zinc-300">Tickets por agente</h2>
+              {unassignedTickets > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 border border-red-500/20 px-3 py-1 text-xs font-medium text-red-400">
+                  {unassignedTickets} sin asignar
+                </span>
+              )}
             </div>
-          )}
+            {byAssignee.length === 0 ? (
+              <p className="text-sm text-zinc-600 italic">
+                {unassignedTickets > 0
+                  ? "Todos los tickets están sin asignar."
+                  : "Sin datos de asignación."}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {byAssignee.map((a: (typeof byAssignee)[number]) => (
+                  <div key={a.name} className="flex items-center gap-3">
+                    <span className="w-36 flex-shrink-0 text-sm text-zinc-300 truncate">{a.name}</span>
+                    <div className="flex flex-1 items-center gap-3">
+                      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full bg-[#38d84e] rounded-full"
+                          style={{ width: `${(a.count / maxAssigneeCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-semibold text-white w-8 text-right">
+                        {a.count}
+                      </span>
+                      <span className="text-xs text-zinc-600 w-10 text-right">
+                        {totalTickets ? Math.round((a.count / totalTickets) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
 
       </section>

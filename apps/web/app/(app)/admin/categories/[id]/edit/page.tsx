@@ -16,14 +16,14 @@ export default async function EditCategoryPage({
   if (!session) redirect("/login");
 
   const { user } = session;
-  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
+  // Todos los roles autenticados pueden editar categorías de su tenant
 
   const cat = await prisma.category.findUnique({
     where: { id },
     include: { client: { select: { name: true } } },
   });
   if (!cat) notFound();
-  if (user.roleKey === "CLIENT_ADMIN" && cat.clientId !== user.clientId) notFound();
+  if (user.roleKey !== "SUPERADMIN" && cat.clientId !== user.clientId) notFound();
 
   const updateAction = updateCategory.bind(null, id);
 

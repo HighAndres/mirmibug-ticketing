@@ -237,8 +237,18 @@ async function main() {
     },
   ];
 
+  const subcategoriesMap: Record<string, string[]> = {
+    "Help Desk": ["Reseteo de contraseña", "Acceso a sistemas", "Consulta general"],
+    "Infraestructura": ["Servidores", "Virtualización", "Almacenamiento", "Respaldos"],
+    "Redes": ["VPN", "Wi-Fi", "Red cableada", "Firewall"],
+    "Seguridad": ["Phishing", "Malware", "Acceso no autorizado", "MFA"],
+    "Correo y Colaboración": ["Microsoft 365", "Google Workspace", "Calendario"],
+    "Aplicaciones y Sistemas": ["ERP", "CRM", "Sistema web"],
+    "Impresión y Escaneo": ["Impresora de red", "Escáner", "Tóner/Cartuchos"],
+  };
+
   for (const category of categoriesData) {
-    await prisma.category.upsert({
+    const cat = await prisma.category.upsert({
       where: {
         clientId_name: {
           clientId: company.id,
@@ -254,6 +264,23 @@ async function main() {
         clientId: company.id,
       },
     });
+
+    const subs = subcategoriesMap[category.name] ?? [];
+    for (const subName of subs) {
+      await prisma.subcategory.upsert({
+        where: {
+          categoryId_name: {
+            categoryId: cat.id,
+            name: subName,
+          },
+        },
+        update: {},
+        create: {
+          name: subName,
+          categoryId: cat.id,
+        },
+      });
+    }
   }
 
   const superAdmin = await prisma.user.upsert({

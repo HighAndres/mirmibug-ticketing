@@ -118,7 +118,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
-        client: { select: { name: true } },
+        client: { select: { name: true, primaryColor: true } },
         category: { select: { name: true } },
         requester: { select: { name: true } },
         assignee: { select: { id: true, name: true } },
@@ -347,8 +347,14 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                         </p>
                       </td>
                       {user.roleKey === "SUPERADMIN" && (
-                        <td className="px-5 py-3 text-zinc-400 text-xs">
-                          {ticket.client.name}
+                        <td className="px-5 py-3">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-zinc-300">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: ticket.client.primaryColor ?? "#38d84e" }}
+                            />
+                            {ticket.client.name}
+                          </span>
                         </td>
                       )}
                       <td className="px-5 py-3 text-zinc-400 text-xs">

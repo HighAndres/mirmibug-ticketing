@@ -26,6 +26,7 @@ export async function createTicket(formData: FormData) {
   const description = formData.get("description") as string;
   const priority = formData.get("priority") as string;
   const categoryId = formData.get("categoryId") as string;
+  const subcategoryId = (formData.get("subcategoryId") as string) || null;
 
   if (!title?.trim() || !description?.trim() || !categoryId) {
     throw new Error("Campos requeridos incompletos");
@@ -39,7 +40,7 @@ export async function createTicket(formData: FormData) {
 
   if (!clientId) throw new Error("Cliente requerido");
 
-  const folio = await generateFolio();
+  const folio = await generateFolio(clientId);
 
   const ticket = await prisma.ticket.create({
     data: {
@@ -50,20 +51,30 @@ export async function createTicket(formData: FormData) {
       status: "OPEN",
       requesterId: user.id,
       categoryId,
+      subcategoryId,
       clientId,
     },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      action: "CREATE",
-      entityType: "Ticket",
-      entityId: ticket.id,
-      description: `Ticket ${folio} creado: "${title}"`,
-      actorId: user.id,
-      metadataJson: JSON.stringify({ folio, clientId, categoryId }),
-    },
-  });
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "CREATE",
+        entityType: "Ticket",
+        entityId: ticket.id,
+        description: `Ticket ${folio} creado: "${title}"`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ folio, clientId, categoryId }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "CREATED",
+        ticketId: ticket.id,
+        actorId: user.id,
+      },
+    }),
+  ]);
 
   // Email: notificar al solicitante
   notifyTicketCreated(user.email ?? "", user.name ?? "", ticket).catch(console.error);
@@ -118,16 +129,28 @@ export async function changeTicketStatus(ticketId: string, status: string) {
     data: { status: status as "OPEN" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED" },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      action: "UPDATE",
-      entityType: "Ticket",
-      entityId: ticketId,
-      description: `Estatus de ${ticket.folio} cambiado a ${status}`,
-      actorId: user.id,
-      metadataJson: JSON.stringify({ from: previousStatus, to: status }),
-    },
-  });
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "Ticket",
+        entityId: ticketId,
+        description: `Estatus de ${ticket.folio} cambiado a ${status}`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ from: previousStatus, to: status }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "STATUS_CHANGE",
+        field: "status",
+        oldValue: previousStatus,
+        newValue: status,
+        ticketId,
+        actorId: user.id,
+      },
+    }),
+  ]);
 
   // Email: notificar al solicitante y al asignado
   notifyStatusChanged(
@@ -174,6 +197,20 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
     throw new Error("Sin permisos para este ticket");
   }
 
+  // Obtener asignado anterior para el timeline
+  const previousAssigneeId = (await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { assigneeId: true },
+  }))?.assigneeId ?? null;
+
+  // Obtener nombre del nuevo asignado si existe
+  const newAssigneeName = assigneeId
+    ? (await prisma.user.findUnique({ where: { id: assigneeId }, select: { name: true } }))?.name ?? null
+    : null;
+  const previousAssigneeName = previousAssigneeId
+    ? (await prisma.user.findUnique({ where: { id: previousAssigneeId }, select: { name: true } }))?.name ?? null
+    : null;
+
   await prisma.ticket.update({
     where: { id: ticketId },
     data: {
@@ -182,18 +219,30 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
     },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      action: "ASSIGN",
-      entityType: "Ticket",
-      entityId: ticketId,
-      description: assigneeId
-        ? `Ticket ${ticket.folio} asignado`
-        : `Ticket ${ticket.folio} desasignado`,
-      actorId: user.id,
-      metadataJson: JSON.stringify({ assigneeId }),
-    },
-  });
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "ASSIGN",
+        entityType: "Ticket",
+        entityId: ticketId,
+        description: assigneeId
+          ? `Ticket ${ticket.folio} asignado`
+          : `Ticket ${ticket.folio} desasignado`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ assigneeId }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "ASSIGNMENT",
+        field: "assigneeId",
+        oldValue: previousAssigneeName ?? null,
+        newValue: newAssigneeName ?? null,
+        ticketId,
+        actorId: user.id,
+      },
+    }),
+  ]);
 
   // Email: notificar al nuevo asignado
   if (assigneeId) {
@@ -255,16 +304,28 @@ export async function changeTicketPriority(ticketId: string, newPriority: string
     },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      action: "UPDATE",
-      entityType: "Ticket",
-      entityId: ticketId,
-      description: `Prioridad de ${ticket.folio} cambiada de ${previousPriority} a ${newPriority}`,
-      actorId: user.id,
-      metadataJson: JSON.stringify({ field: "priority", from: previousPriority, to: newPriority }),
-    },
-  });
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "Ticket",
+        entityId: ticketId,
+        description: `Prioridad de ${ticket.folio} cambiada de ${previousPriority} a ${newPriority}`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ field: "priority", from: previousPriority, to: newPriority }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "PRIORITY_CHANGE",
+        field: "priority",
+        oldValue: previousPriority,
+        newValue: newPriority,
+        ticketId,
+        actorId: user.id,
+      },
+    }),
+  ]);
 
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/tickets");
@@ -303,16 +364,27 @@ export async function validateTicketPriority(ticketId: string) {
     },
   });
 
-  await prisma.auditLog.create({
-    data: {
-      action: "UPDATE",
-      entityType: "Ticket",
-      entityId: ticketId,
-      description: `Prioridad "${ticket.priority}" de ${ticket.folio} validada`,
-      actorId: user.id,
-      metadataJson: JSON.stringify({ field: "priorityValidation", priority: ticket.priority }),
-    },
-  });
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "Ticket",
+        entityId: ticketId,
+        description: `Prioridad "${ticket.priority}" de ${ticket.folio} validada`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ field: "priorityValidation", priority: ticket.priority }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "PRIORITY_VALIDATION",
+        field: "priority",
+        newValue: ticket.priority,
+        ticketId,
+        actorId: user.id,
+      },
+    }),
+  ]);
 
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/tickets");

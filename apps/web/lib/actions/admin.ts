@@ -9,7 +9,7 @@ import fs from "fs/promises";
 import path from "path";
 import { validateRoleAssignment } from "@/lib/permissions";
 
-// ── Guard helper ──────────────────────────────────────────────────────────────
+// ── Guard helpers ─────────────────────────────────────────────────────────────
 
 async function requireAdmin(minRole?: "SUPERADMIN") {
   const session = await auth();
@@ -21,6 +21,12 @@ async function requireAdmin(minRole?: "SUPERADMIN") {
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) {
     throw new Error("No autorizado");
   }
+  return session;
+}
+
+async function requireAuth() {
+  const session = await auth();
+  if (!session) redirect("/login");
   return session;
 }
 
@@ -232,7 +238,7 @@ export async function toggleClientActive(id: string) {
 // ── Categories ────────────────────────────────────────────────────────────────
 
 export async function createCategory(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const actor = session.user;
 
   const name = (formData.get("name") as string).trim();
@@ -263,12 +269,12 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const actor = session.user;
 
   const existing = await prisma.category.findUnique({ where: { id } });
   if (!existing) throw new Error("Categoría no encontrada");
-  if (actor.roleKey === "CLIENT_ADMIN" && existing.clientId !== actor.clientId) {
+  if (actor.roleKey !== "SUPERADMIN" && existing.clientId !== actor.clientId) {
     throw new Error("No autorizado");
   }
 
@@ -284,7 +290,7 @@ export async function updateCategory(id: string, formData: FormData) {
 }
 
 export async function deleteCategory(id: string) {
-  const session = await requireAdmin();
+  const session = await requireAuth();
   const actor = session.user;
 
   const cat = await prisma.category.findUnique({
@@ -292,7 +298,7 @@ export async function deleteCategory(id: string) {
     include: { _count: { select: { tickets: true } } },
   });
   if (!cat) throw new Error("Categoría no encontrada");
-  if (actor.roleKey === "CLIENT_ADMIN" && cat.clientId !== actor.clientId) {
+  if (actor.roleKey !== "SUPERADMIN" && cat.clientId !== actor.clientId) {
     throw new Error("No autorizado");
   }
   if (cat._count.tickets > 0) {
@@ -300,6 +306,64 @@ export async function deleteCategory(id: string) {
   }
 
   await prisma.category.delete({ where: { id } });
+
+  revalidatePath("/admin/categories");
+}
+
+// ── Subcategories ─────────────────────────────────────────────────────────────
+
+export async function createSubcategory(formData: FormData) {
+  const session = await requireAuth();
+  const actor = session.user;
+
+  const name = (formData.get("name") as string).trim();
+  const description = (formData.get("description") as string).trim() || null;
+  const categoryId = formData.get("categoryId") as string;
+
+  if (!name || !categoryId) throw new Error("Nombre y categoría son requeridos");
+
+  // Verificar que la categoría pertenece al cliente del usuario
+  const category = await prisma.category.findUnique({ where: { id: categoryId } });
+  if (!category) throw new Error("Categoría no encontrada");
+  if (actor.roleKey !== "SUPERADMIN" && category.clientId !== actor.clientId) {
+    throw new Error("No autorizado");
+  }
+
+  await prisma.subcategory.create({
+    data: { name, description, categoryId },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "CREATE",
+      entityType: "Subcategory",
+      entityId: categoryId,
+      description: `Subcategoría "${name}" creada en categoría "${category.name}"`,
+      actorId: actor.id,
+    },
+  });
+
+  revalidatePath("/admin/categories");
+  redirect("/admin/categories");
+}
+
+export async function deleteSubcategory(id: string) {
+  const session = await requireAuth();
+  const actor = session.user;
+
+  const sub = await prisma.subcategory.findUnique({
+    where: { id },
+    include: { category: true, _count: { select: { tickets: true } } },
+  });
+  if (!sub) throw new Error("Subcategoría no encontrada");
+  if (actor.roleKey !== "SUPERADMIN" && sub.category.clientId !== actor.clientId) {
+    throw new Error("No autorizado");
+  }
+  if (sub._count.tickets > 0) {
+    throw new Error("No se puede eliminar una subcategoría con tickets asociados");
+  }
+
+  await prisma.subcategory.delete({ where: { id } });
 
   revalidatePath("/admin/categories");
 }
@@ -323,6 +387,8 @@ export async function updateClientBranding(id: string, formData: FormData) {
   const timezone = (formData.get("timezone") as string).trim() || "America/Mexico_City";
   const slaHoursRaw = parseInt(formData.get("slaHours") as string, 10);
   const slaHours = isNaN(slaHoursRaw) ? null : slaHoursRaw;
+  const ticketPrefixRaw = (formData.get("ticketPrefix") as string)?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || null;
+  const ticketPrefix = ticketPrefixRaw ? ticketPrefixRaw.slice(0, 10) : null;
 
   // Logo upload (optional)
   let logoUrl = client.logoUrl;
@@ -364,6 +430,7 @@ export async function updateClientBranding(id: string, formData: FormData) {
       address,
       timezone,
       slaHours,
+      ticketPrefix,
     },
   });
 

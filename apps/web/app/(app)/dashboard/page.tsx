@@ -63,6 +63,14 @@ export default async function DashboardPage() {
     ? {}
     : { clientId: user.clientId ?? "__none__" };
 
+  // Cargar datos del cliente para mostrar branding en el dashboard
+  const clientCompany = !isSuperAdmin && user.clientId
+    ? await prisma.clientCompany.findUnique({
+        where: { id: user.clientId },
+        select: { name: true, logoUrl: true, primaryColor: true, supportEmail: true, supportPhone: true },
+      })
+    : null;
+
   const [
     totalTickets,
     openTickets,
@@ -115,15 +123,31 @@ export default async function DashboardPage() {
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="flex items-center gap-5">
-              <Image
-                src="/branding/mirmibug-logo-green_sfondo.png"
-                alt="Mirmibug"
-                width={56}
-                height={56}
-                className="shrink-0 hidden md:block"
-              />
+              {clientCompany?.logoUrl ? (
+                <img
+                  src={clientCompany.logoUrl}
+                  alt={clientCompany.name}
+                  className="h-14 w-14 shrink-0 rounded-xl object-contain hidden md:block"
+                />
+              ) : (
+                <Image
+                  src="/branding/mirmibug-logo-green_sfondo.png"
+                  alt="Mirmibug"
+                  width={56}
+                  height={56}
+                  className="shrink-0 hidden md:block"
+                />
+              )}
               <div>
-                <p className="mb-2 inline-block rounded-full border border-[#38d84e]/30 bg-[#38d84e]/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-[#7CFF8D]">
+                <p
+                  className="mb-2 inline-block rounded-full px-3 py-1 text-xs font-medium uppercase tracking-[0.2em]"
+                  style={{
+                    borderColor: `${clientCompany?.primaryColor ?? "#38d84e"}4d`,
+                    backgroundColor: `${clientCompany?.primaryColor ?? "#38d84e"}1a`,
+                    color: clientCompany?.primaryColor ?? "#7CFF8D",
+                    borderWidth: "1px",
+                  }}
+                >
                   {isSuperAdmin ? "Vista global" : user.clientName ?? "Mi empresa"}
                 </p>
                 <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
@@ -136,6 +160,12 @@ export default async function DashboardPage() {
                 </p>
               </div>
             </div>
+            {!isSuperAdmin && clientCompany && (clientCompany.supportEmail || clientCompany.supportPhone) && (
+              <div className="text-right text-xs text-zinc-500">
+                {clientCompany.supportEmail && <p>Soporte: {clientCompany.supportEmail}</p>}
+                {clientCompany.supportPhone && <p>{clientCompany.supportPhone}</p>}
+              </div>
+            )}
           </div>
         </div>
       </section>

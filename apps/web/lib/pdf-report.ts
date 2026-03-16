@@ -21,6 +21,7 @@ export interface ReportData {
   // Distribuciones
   byStatus: { status: string; label: string; count: number }[];
   byPriority: { priority: string; label: string; count: number }[];
+  byCategory: { name: string; count: number }[];
   byAssignee: { name: string; count: number }[];
 
   // Tabla de tickets recientes
@@ -97,6 +98,28 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
     doc.on("error", reject);
 
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+    // ── Page numbering ────────────────────────────────────────────────────
+    let pageCount = 1;
+
+    function drawPageNumber() {
+      const text = `Página ${pageCount}`;
+      doc
+        .fontSize(7)
+        .fillColor(COLORS.textDim)
+        .text(
+          text,
+          doc.page.margins.left,
+          doc.page.height - doc.page.margins.bottom + 10,
+          { width: pageWidth, align: "right" }
+        );
+    }
+
+    // Draw page number on every new page
+    doc.on("pageAdded", () => {
+      pageCount++;
+      drawPageNumber();
+    });
 
     // ── Helper functions ─────────────────────────────────────────────────
     function drawLine(y: number) {
@@ -307,6 +330,50 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
 
     doc.y = Math.max(sy, py) + 12;
 
+    // ── Tickets by Category ─────────────────────────────────────────────
+    if (data.byCategory.length > 0) {
+      checkPageBreak(30 + data.byCategory.length * 18);
+
+      doc
+        .fontSize(10)
+        .fillColor(COLORS.textLight)
+        .text("Tickets por categoría", doc.page.margins.left, doc.y);
+
+      doc.y += 18;
+      const maxCat = data.byCategory[0]?.count ?? 1;
+
+      data.byCategory.forEach((c: { name: string; count: number }) => {
+        const barMaxW = pageWidth - 160;
+        const barW = Math.max(2, (c.count / maxCat) * barMaxW);
+        const pct = data.totalTickets > 0 ? Math.round((c.count / data.totalTickets) * 100) : 0;
+
+        doc
+          .fontSize(8)
+          .fillColor(COLORS.textLight)
+          .text(c.name, doc.page.margins.left, doc.y, { width: 110, lineBreak: false });
+
+        drawRoundedRect(doc.page.margins.left + 115, doc.y + 1, barMaxW, 10, COLORS.card, 3);
+        drawRoundedRect(doc.page.margins.left + 115, doc.y + 1, barW, 10, COLORS.sky + "66", 3);
+
+        doc
+          .fontSize(8)
+          .fillColor(COLORS.textWhite)
+          .text(String(c.count), doc.page.margins.left + 115 + barMaxW + 8, doc.y, {
+            width: 24,
+            align: "right",
+          });
+
+        doc
+          .fontSize(7)
+          .fillColor(COLORS.textDim)
+          .text(`${pct}%`, doc.page.margins.left + 115 + barMaxW + 36, doc.y + 1);
+
+        doc.y += 18;
+      });
+
+      doc.y += 8;
+    }
+
     // ── Tickets by Assignee ──────────────────────────────────────────────
     if (data.byAssignee.length > 0) {
       checkPageBreak(30 + data.byAssignee.length * 18);
@@ -479,6 +546,7 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
     });
 
     // ── Footer ────────────────────────────────────────────────────────────
+    checkPageBreak(50);
     doc.y += 16;
     drawLine(doc.y);
     doc.y += 8;
@@ -502,6 +570,9 @@ export async function generateReportPDF(data: ReportData): Promise<Buffer> {
         doc.y + 12,
         { align: "center", width: pageWidth }
       );
+
+    // Draw page number on first (and possibly only) page
+    drawPageNumber();
 
     doc.end();
   });
