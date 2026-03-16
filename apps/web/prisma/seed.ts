@@ -375,6 +375,21 @@ async function main() {
     },
   });
 
+  // Asignar al agente como multi-cliente de Demo Industrial vía UserClient
+  await prisma.userClient.upsert({
+    where: {
+      userId_clientId: {
+        userId: agent.id,
+        clientId: company.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: agent.id,
+      clientId: company.id,
+    },
+  });
+
   const auditViewPermission = await prisma.permission.findUnique({
     where: { key: "audit.view" },
   });

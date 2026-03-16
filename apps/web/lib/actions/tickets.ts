@@ -11,7 +11,7 @@ import {
 } from "@/lib/mailer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenant } from "@/lib/permissions";
+import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenantAsync, getUserClientIds } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Crear ticket
@@ -32,11 +32,16 @@ export async function createTicket(formData: FormData) {
     throw new Error("Campos requeridos incompletos");
   }
 
-  // El clientId viene de la sesión (o lo elige el SUPERADMIN en el form)
-  const clientId =
-    user.roleKey === "SUPERADMIN"
-      ? (formData.get("clientId") as string)
-      : user.clientId!;
+  // El clientId viene de la sesión, o lo elige el SUPERADMIN/AGENT multi-cliente en el form
+  let clientId: string;
+  if (user.roleKey === "SUPERADMIN") {
+    clientId = formData.get("clientId") as string;
+  } else if (user.roleKey === "AGENT" && !user.clientId) {
+    // Agente multi-cliente: debe elegir el cliente desde el form
+    clientId = formData.get("clientId") as string;
+  } else {
+    clientId = user.clientId!;
+  }
 
   if (!clientId) throw new Error("Cliente requerido");
 
@@ -117,8 +122,8 @@ export async function changeTicketStatus(ticketId: string, status: string) {
     }
   }
 
-  // Multitenencia: verificar mismo tenant
-  if (!isSameTenant(user, ticket.clientId)) {
+  // Multitenencia: verificar mismo tenant (async para agentes multi-cliente)
+  if (!(await isSameTenantAsync(user, ticket.clientId))) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -193,7 +198,7 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (!isSameTenant(user, ticket.clientId)) {
+  if (!(await isSameTenantAsync(user, ticket.clientId))) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -288,7 +293,7 @@ export async function changeTicketPriority(ticketId: string, newPriority: string
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (!isSameTenant(user, ticket.clientId)) {
+  if (!(await isSameTenantAsync(user, ticket.clientId))) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -351,7 +356,7 @@ export async function validateTicketPriority(ticketId: string) {
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  if (!isSameTenant(user, ticket.clientId)) {
+  if (!(await isSameTenantAsync(user, ticket.clientId))) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -427,8 +432,13 @@ export async function addComment(formData: FormData) {
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  // Autorización: CLIENT_USER solo puede comentar en SUS PROPIOS tickets
-  if (!canModifyTicket(user, ticket)) {
+  // Autorización: verificar acceso multi-tenant
+  if (user.roleKey === "AGENT") {
+    const agentClientIds = await getUserClientIds(user.id, user.roleKey, user.clientId);
+    if (!canModifyTicket(user, ticket, agentClientIds)) {
+      throw new Error("Sin permisos para este ticket");
+    }
+  } else if (!canModifyTicket(user, ticket)) {
     throw new Error("Sin permisos para este ticket");
   }
 

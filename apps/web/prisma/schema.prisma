@@ -61,6 +61,7 @@ model ClientCompany {
   users       User[]
   categories  Category[]
   tickets     Ticket[]
+  userClients UserClient[]
 }
 
 model Role {
@@ -140,6 +141,7 @@ model User {
   auditLogs           AuditLog[]       @relation("AuditActor")
   ticketActivities    TicketActivity[] @relation("ActivityActor")
   attachments         Attachment[]     @relation("AttachmentUploader")
+  userClients         UserClient[]
 }
 
 model Category {
@@ -249,6 +251,18 @@ model Attachment {
 
   uploadedById String
   uploadedBy   User      @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+}
+
+model UserClient {
+  id        String        @id @default(cuid())
+  userId    String
+  clientId  String
+  createdAt DateTime      @default(now())
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    ClientCompany @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clientId])
 }
 
 model AuditLog {

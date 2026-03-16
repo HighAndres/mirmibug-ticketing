@@ -15,7 +15,7 @@ import {
   changeTicketPriority,
   validateTicketPriority,
 } from "@/lib/actions/tickets";
-import { canAccessTicket, canManageTickets } from "@/lib/permissions";
+import { canAccessTicket, canManageTickets, getUserClientIds } from "@/lib/permissions";
 import FileUpload, { AttachmentList } from "./file-upload";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -87,13 +87,16 @@ export default async function TicketDetailPage({ params }: PageProps) {
   if (!ticket) notFound();
 
   // Autorización: multitenencia + CLIENT_USER solo ve sus propios tickets
-  if (!canAccessTicket(user, ticket)) {
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : [];
+  if (!canAccessTicket(user, ticket, agentClientIds)) {
     notFound();
   }
 
   const canManage = canManageTickets(user.roleKey);
 
-  // Agentes disponibles para asignar
+  // Agentes disponibles para asignar (incluye agentes multi-cliente vía UserClient)
   const agents = canManage
     ? await prisma.user.findMany({
         where: {
@@ -102,8 +105,8 @@ export default async function TicketDetailPage({ params }: PageProps) {
           ...(user.roleKey !== "SUPERADMIN"
             ? {
                 OR: [
-                  { clientId: user.clientId },
-                  { clientId: null },
+                  { clientId: ticket.clientId },
+                  { userClients: { some: { clientId: ticket.clientId } } },
                 ],
               }
             : {}),

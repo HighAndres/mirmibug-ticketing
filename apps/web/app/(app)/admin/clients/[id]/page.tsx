@@ -80,7 +80,12 @@ export default async function ClientDetailPage({
       _count: { id: true },
     }),
     prisma.user.findMany({
-      where: { clientId: id },
+      where: {
+        OR: [
+          { clientId: id },
+          { userClients: { some: { clientId: id } } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
       include: { role: { select: { name: true, key: true } } },
     }),

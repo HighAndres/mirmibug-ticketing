@@ -14,17 +14,42 @@ export default async function NewTicketPage() {
   const { user } = session;
   const isSuperAdmin = user.roleKey === "SUPERADMIN";
 
+  // Agente multi-cliente: obtener sus clientes asignados
+  const isAgentMultiClient = user.roleKey === "AGENT" && !user.clientId;
+  let agentClientIds: string[] = [];
+  if (isAgentMultiClient) {
+    const rows = await prisma.userClient.findMany({
+      where: { userId: user.id },
+      select: { clientId: true },
+    });
+    agentClientIds = rows.map((r) => r.clientId);
+  }
+
+  const needsClientSelector = isSuperAdmin || (isAgentMultiClient && agentClientIds.length > 1);
+
   // Cargar categorías disponibles según el cliente del usuario
+  const categoryFilter = isSuperAdmin
+    ? {}
+    : isAgentMultiClient
+    ? { clientId: { in: agentClientIds } }
+    : { clientId: user.clientId ?? "__none__" };
+
   const categories = await prisma.category.findMany({
-    where: isSuperAdmin ? {} : { clientId: user.clientId ?? "__none__" },
+    where: categoryFilter,
     orderBy: [{ client: { name: "asc" } }, { name: "asc" }],
     include: { client: { select: { name: true, id: true } } },
   });
 
-  // Para SUPERADMIN: lista de clientes activos
+  // Lista de clientes activos para el selector
   const clients = isSuperAdmin
     ? await prisma.clientCompany.findMany({
         where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      })
+    : isAgentMultiClient
+    ? await prisma.clientCompany.findMany({
+        where: { id: { in: agentClientIds }, isActive: true },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -56,8 +81,8 @@ export default async function NewTicketPage() {
         <form action={createTicket}>
           <div className="rounded-2xl border border-white/10 bg-[#111111] p-6 space-y-5">
 
-            {/* Cliente (solo SUPERADMIN) */}
-            {isSuperAdmin && (
+            {/* Cliente (SUPERADMIN o agente multi-cliente) */}
+            {needsClientSelector && (
               <div>
                 <label htmlFor="clientId" className="block text-sm font-medium text-zinc-400 mb-2">
                   Cliente <span className="text-red-400">*</span>
@@ -74,6 +99,11 @@ export default async function NewTicketPage() {
                   ))}
                 </select>
               </div>
+            )}
+
+            {/* Hidden clientId for single-client agents */}
+            {isAgentMultiClient && agentClientIds.length === 1 && (
+              <input type="hidden" name="clientId" value={agentClientIds[0]} />
             )}
 
             {/* Título */}
@@ -114,7 +144,7 @@ export default async function NewTicketPage() {
                 name: c.name,
                 client: { id: c.client.id, name: c.client.name },
               }))}
-              isSuperAdmin={isSuperAdmin}
+              isSuperAdmin={isSuperAdmin || isAgentMultiClient}
             />
 
             {/* Prioridad */}

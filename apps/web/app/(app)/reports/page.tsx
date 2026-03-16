@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { STATUS_LABELS, PRIORITY_LABELS, STATUS_CLASSES, PRIORITY_CLASSES } from "@/lib/tickets";
 import { DownloadReportButton } from "@/components/DownloadReportButton";
+import { getUserClientIds } from "@/lib/permissions";
 
 export const metadata = { title: "Reportes" };
 
@@ -15,8 +16,16 @@ export default async function ReportsPage() {
     redirect("/dashboard");
   }
 
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : [];
+
   const clientFilter =
-    user.roleKey === "SUPERADMIN" ? {} : { clientId: user.clientId ?? "__none__" };
+    user.roleKey === "SUPERADMIN"
+      ? {}
+      : user.roleKey === "AGENT" && agentClientIds.length > 0
+      ? { clientId: { in: agentClientIds } }
+      : { clientId: user.clientId ?? "__none__" };
 
   // ── Clientes (para selector de descarga SUPERADMIN) ────────────────────────
   const allClients =

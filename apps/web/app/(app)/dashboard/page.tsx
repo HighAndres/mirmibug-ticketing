@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Image from "next/image";
+import { getUserClientIds } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Helpers de etiquetas y estilos (mismos que antes, centralizados aquí)
@@ -58,9 +59,15 @@ export default async function DashboardPage() {
   const { user } = session;
   const isSuperAdmin = user.roleKey === "SUPERADMIN";
 
-  // Filtro base: SUPERADMIN ve todo, los demás ven solo su cliente
+  // Filtro base: SUPERADMIN ve todo, agentes ven sus clientes asignados, los demás ven su cliente
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : [];
+
   const clientFilter = isSuperAdmin
     ? {}
+    : user.roleKey === "AGENT" && agentClientIds.length > 0
+    ? { clientId: { in: agentClientIds } }
     : { clientId: user.clientId ?? "__none__" };
 
   // Cargar datos del cliente para mostrar branding en el dashboard
