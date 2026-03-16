@@ -8,6 +8,7 @@ import {
   STATUS_CLASSES,
   PRIORITY_CLASSES,
 } from "@/lib/tickets";
+import { getUserClientIds } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Tipos de filtros via searchParams
@@ -52,13 +53,22 @@ export default async function TicketsPage({ searchParams }: PageProps) {
 
   // ── Multitenencia ──────────────────────────────────────────────────────────
   // CLIENT_USER: solo sus propios tickets
+  // AGENT: tickets de todos sus clientes asignados (via UserClient)
   // Los demás roles del cliente: todos los tickets de su empresa
   // SUPERADMIN: todo
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : [];
+
   const clientFilter =
     user.roleKey === "SUPERADMIN"
       ? {}
       : user.roleKey === "CLIENT_USER"
       ? { clientId: user.clientId ?? "__none__", requesterId: user.id }
+      : user.roleKey === "AGENT"
+      ? agentClientIds.length > 0
+        ? { clientId: { in: agentClientIds } }
+        : { clientId: "__none__" }
       : { clientId: user.clientId ?? "__none__" };
 
   // ── Filtro de período ──────────────────────────────────────────────────────
@@ -118,7 +128,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
       include: {
-        client: { select: { name: true } },
+        client: { select: { name: true, primaryColor: true } },
         category: { select: { name: true } },
         requester: { select: { name: true } },
         assignee: { select: { id: true, name: true } },
@@ -145,6 +155,15 @@ export default async function TicketsPage({ searchParams }: PageProps) {
         where:
           user.roleKey === "SUPERADMIN"
             ? { role: { key: { in: ["AGENT", "CLIENT_ADMIN", "SUPERADMIN"] } } }
+            : user.roleKey === "AGENT"
+            ? {
+                isActive: true,
+                role: { key: { in: ["AGENT", "CLIENT_ADMIN", "SUPERADMIN"] } },
+                OR: [
+                  { userClients: { some: { clientId: { in: agentClientIds } } } },
+                  ...(agentClientIds.length > 0 ? [{ clientId: { in: agentClientIds } }] : []),
+                ],
+              }
             : { clientId: user.clientId ?? "__none__", role: { key: { in: ["AGENT", "CLIENT_ADMIN", "CLIENT_SUPERVISOR"] } } },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
@@ -300,7 +319,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                 <tr>
                   <th className="px-5 py-3 font-medium">Folio</th>
                   <th className="px-5 py-3 font-medium">Título</th>
-                  {user.roleKey === "SUPERADMIN" && (
+                  {(user.roleKey === "SUPERADMIN" || (user.roleKey === "AGENT" && agentClientIds.length > 1)) && (
                     <th className="px-5 py-3 font-medium">Cliente</th>
                   )}
                   <th className="px-5 py-3 font-medium">Categoría</th>
@@ -315,7 +334,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                 {tickets.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={user.roleKey === "SUPERADMIN" ? 9 : 8}
+                      colSpan={(user.roleKey === "SUPERADMIN" || (user.roleKey === "AGENT" && agentClientIds.length > 1)) ? 9 : 8}
                       className="px-5 py-12 text-center text-zinc-500"
                     >
                       No hay tickets que coincidan con los filtros.
@@ -346,9 +365,15 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                           {ticket.requester.name}
                         </p>
                       </td>
-                      {user.roleKey === "SUPERADMIN" && (
-                        <td className="px-5 py-3 text-zinc-400 text-xs">
-                          {ticket.client.name}
+                      {(user.roleKey === "SUPERADMIN" || (user.roleKey === "AGENT" && agentClientIds.length > 1)) && (
+                        <td className="px-5 py-3">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-zinc-300">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: ticket.client.primaryColor ?? "#38d84e" }}
+                            />
+                            {ticket.client.name}
+                          </span>
                         </td>
                       )}
                       <td className="px-5 py-3 text-zinc-400 text-xs">

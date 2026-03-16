@@ -2,22 +2,33 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Genera el siguiente folio para un ticket.
- * Formato: MB-NNNN (ej: MB-0042)
- * Es atómico: busca el folio más alto existente y suma 1.
+ * Usa el prefijo personalizado del cliente (ticketPrefix) o "MB" por defecto.
+ * Formato: PREFIX-NNNN (ej: DEMO-0001, ACME-0042)
+ * El contador es independiente por prefijo para evitar colisiones.
  */
-export async function generateFolio(): Promise<string> {
+export async function generateFolio(clientId: string): Promise<string> {
+  // Obtener el prefijo del cliente
+  const client = await prisma.clientCompany.findUnique({
+    where: { id: clientId },
+    select: { ticketPrefix: true },
+  });
+
+  const prefix = client?.ticketPrefix?.toUpperCase().trim() || "MB";
+
+  // Buscar el último folio con este prefijo
   const last = await prisma.ticket.findFirst({
+    where: { folio: { startsWith: `${prefix}-` } },
     orderBy: { folio: "desc" },
     select: { folio: true },
   });
 
   let next = 1;
   if (last) {
-    const num = parseInt(last.folio.replace("MB-", ""), 10);
+    const num = parseInt(last.folio.replace(`${prefix}-`, ""), 10);
     if (!isNaN(num)) next = num + 1;
   }
 
-  return `MB-${String(next).padStart(4, "0")}`;
+  return `${prefix}-${String(next).padStart(4, "0")}`;
 }
 
 // ---------------------------------------------------------------------------

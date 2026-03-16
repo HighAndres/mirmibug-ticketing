@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { createTicket } from "@/lib/actions/tickets";
 import Link from "next/link";
+import CategorySelect from "./category-select";
 
 export const metadata = { title: "Nuevo ticket" };
 
@@ -13,17 +14,42 @@ export default async function NewTicketPage() {
   const { user } = session;
   const isSuperAdmin = user.roleKey === "SUPERADMIN";
 
+  // Agente multi-cliente: obtener sus clientes asignados
+  const isAgentMultiClient = user.roleKey === "AGENT" && !user.clientId;
+  let agentClientIds: string[] = [];
+  if (isAgentMultiClient) {
+    const rows = await prisma.userClient.findMany({
+      where: { userId: user.id },
+      select: { clientId: true },
+    });
+    agentClientIds = rows.map((r) => r.clientId);
+  }
+
+  const needsClientSelector = isSuperAdmin || (isAgentMultiClient && agentClientIds.length > 1);
+
   // Cargar categorías disponibles según el cliente del usuario
+  const categoryFilter = isSuperAdmin
+    ? {}
+    : isAgentMultiClient
+    ? { clientId: { in: agentClientIds } }
+    : { clientId: user.clientId ?? "__none__" };
+
   const categories = await prisma.category.findMany({
-    where: isSuperAdmin ? {} : { clientId: user.clientId ?? "__none__" },
+    where: categoryFilter,
     orderBy: [{ client: { name: "asc" } }, { name: "asc" }],
     include: { client: { select: { name: true, id: true } } },
   });
 
-  // Para SUPERADMIN: lista de clientes activos
+  // Lista de clientes activos para el selector
   const clients = isSuperAdmin
     ? await prisma.clientCompany.findMany({
         where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      })
+    : isAgentMultiClient
+    ? await prisma.clientCompany.findMany({
+        where: { id: { in: agentClientIds }, isActive: true },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       })
@@ -55,8 +81,8 @@ export default async function NewTicketPage() {
         <form action={createTicket}>
           <div className="rounded-2xl border border-white/10 bg-[#111111] p-6 space-y-5">
 
-            {/* Cliente (solo SUPERADMIN) */}
-            {isSuperAdmin && (
+            {/* Cliente (SUPERADMIN o agente multi-cliente) */}
+            {needsClientSelector && (
               <div>
                 <label htmlFor="clientId" className="block text-sm font-medium text-zinc-400 mb-2">
                   Cliente <span className="text-red-400">*</span>
@@ -73,6 +99,11 @@ export default async function NewTicketPage() {
                   ))}
                 </select>
               </div>
+            )}
+
+            {/* Hidden clientId for single-client agents */}
+            {isAgentMultiClient && agentClientIds.length === 1 && (
+              <input type="hidden" name="clientId" value={agentClientIds[0]} />
             )}
 
             {/* Título */}
@@ -106,60 +137,32 @@ export default async function NewTicketPage() {
               />
             </div>
 
-            {/* Categoría + Prioridad en grid */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="categoryId" className="block text-sm font-medium text-zinc-400 mb-2">
-                  Categoría <span className="text-red-400">*</span>
-                </label>
-                <select
-                  id="categoryId"
-                  name="categoryId"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  <option value="">Selecciona categoría</option>
-                  {isSuperAdmin
-                    ? // Agrupadas por cliente si es superadmin
-                      Object.entries(
-                        categories.reduce<Record<string, typeof categories>>(
-                          (acc, cat) => {
-                            const key = cat.client.name;
-                            if (!acc[key]) acc[key] = [];
-                            acc[key].push(cat);
-                            return acc;
-                          },
-                          {}
-                        )
-                      ).map(([clientName, cats]) => (
-                        <optgroup key={clientName} label={clientName}>
-                          {cats.map((cat: (typeof categories)[number]) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                        </optgroup>
-                      ))
-                    : categories.map((cat: (typeof categories)[number]) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                </select>
-              </div>
+            {/* Categoría y Subcategoría */}
+            <CategorySelect
+              categories={categories.map((c: (typeof categories)[number]) => ({
+                id: c.id,
+                name: c.name,
+                client: { id: c.client.id, name: c.client.name },
+              }))}
+              isSuperAdmin={isSuperAdmin || isAgentMultiClient}
+            />
 
-              <div>
-                <label htmlFor="priority" className="block text-sm font-medium text-zinc-400 mb-2">
-                  Prioridad
-                </label>
-                <select
-                  id="priority"
-                  name="priority"
-                  defaultValue="MEDIUM"
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  <option value="LOW">Baja</option>
-                  <option value="MEDIUM">Media</option>
-                  <option value="HIGH">Alta</option>
-                  <option value="URGENT">Urgente</option>
-                </select>
-              </div>
+            {/* Prioridad */}
+            <div>
+              <label htmlFor="priority" className="block text-sm font-medium text-zinc-400 mb-2">
+                Prioridad
+              </label>
+              <select
+                id="priority"
+                name="priority"
+                defaultValue="MEDIUM"
+                className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
+              >
+                <option value="LOW">Baja</option>
+                <option value="MEDIUM">Media</option>
+                <option value="HIGH">Alta</option>
+                <option value="URGENT">Urgente</option>
+              </select>
             </div>
 
             {/* Acciones */}

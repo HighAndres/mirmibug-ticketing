@@ -16,6 +16,7 @@ type Client = {
   address: string | null;
   timezone: string | null;
   slaHours: number | null;
+  ticketPrefix: string | null;
 };
 
 const TIMEZONES = [
@@ -40,6 +41,7 @@ export default function BrandingForm({ client }: { client: Client }) {
   const [primaryColor, setPrimaryColor] = useState(client.primaryColor ?? "#38d84e");
   const [accentColor, setAccentColor] = useState(client.accentColor ?? "#7CFF8D");
   const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -52,9 +54,13 @@ export default function BrandingForm({ client }: { client: Client }) {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
+    setMessage(null);
     const fd = new FormData(e.currentTarget);
     try {
       await updateClientBranding(client.id, fd);
+      setMessage({ type: "success", text: "Personalización guardada correctamente" });
+    } catch (err) {
+      setMessage({ type: "error", text: err instanceof Error ? err.message : "Error al guardar" });
     } finally {
       setPending(false);
     }
@@ -74,6 +80,19 @@ export default function BrandingForm({ client }: { client: Client }) {
 
   return (
     <form onSubmit={handleSubmit} encType="multipart/form-data" className="space-y-6">
+
+      {/* Mensaje de estado */}
+      {message && (
+        <div
+          className={`rounded-xl px-4 py-3 text-sm font-medium ${
+            message.type === "success"
+              ? "bg-green-500/10 text-green-400 border border-green-500/20"
+              : "bg-red-500/10 text-red-400 border border-red-500/20"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
 
       {/* ── Identidad visual ── */}
       <div className={sectionCls}>
@@ -127,7 +146,6 @@ export default function BrandingForm({ client }: { client: Client }) {
             <div className="flex items-center gap-3">
               <input
                 id="primaryColor"
-                name="primaryColor"
                 type="color"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
@@ -159,7 +177,6 @@ export default function BrandingForm({ client }: { client: Client }) {
             <div className="flex items-center gap-3">
               <input
                 id="accentColor"
-                name="accentColor"
                 type="color"
                 value={accentColor}
                 onChange={(e) => setAccentColor(e.target.value)}
@@ -285,6 +302,30 @@ export default function BrandingForm({ client }: { client: Client }) {
       {/* ── Configuración operativa ── */}
       <div className={sectionCls}>
         <h2 className="text-base font-semibold text-white">Configuración operativa</h2>
+        <div>
+          <label htmlFor="ticketPrefix" className={labelCls}>
+            Prefijo de folio{" "}
+            <span className="text-zinc-600 text-xs">(ej: DEMO, ACME — por defecto: MB)</span>
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              id="ticketPrefix"
+              name="ticketPrefix"
+              type="text"
+              maxLength={10}
+              defaultValue={client.ticketPrefix ?? ""}
+              placeholder="MB"
+              className={`${inputCls} max-w-[200px] uppercase font-mono`}
+            />
+            <span className="text-sm text-zinc-500">
+              → <span className="font-mono text-zinc-300">{(client.ticketPrefix || "MB").toUpperCase()}-0001</span>
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-zinc-600">
+            Solo letras y números, máximo 10 caracteres. Se usará en mayúsculas.
+          </p>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="timezone" className={labelCls}>Zona horaria</label>

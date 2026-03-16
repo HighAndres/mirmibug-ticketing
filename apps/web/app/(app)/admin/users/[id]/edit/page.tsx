@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { updateUser } from "@/lib/actions/admin";
 import { filterAssignableRoles } from "@/lib/permissions";
+import RoleClientSelector from "../../role-client-selector";
 
 export const metadata = { title: "Editar usuario" };
 
@@ -22,7 +23,11 @@ export default async function EditUserPage({
   const [targetUser, allRoles, clients] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
-      include: { role: true, client: true },
+      include: {
+        role: true,
+        client: true,
+        userClients: { select: { clientId: true } },
+      },
     }),
     prisma.role.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     actor.roleKey === "SUPERADMIN"
@@ -41,6 +46,9 @@ export default async function EditUserPage({
   const roles = filterAssignableRoles(allRoles, actor.roleKey) as typeof allRoles;
 
   const updateAction = updateUser.bind(null, id);
+
+  // Clientes asignados vía UserClient (para agentes multi-cliente)
+  const userClientIds = targetUser.userClients.map((uc) => uc.clientId);
 
   return (
     <div className="min-h-full bg-[#0a0a0a] text-white">
@@ -107,49 +115,14 @@ export default async function EditUserPage({
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="roleId" className="block text-sm font-medium text-zinc-400 mb-2">
-                  Rol <span className="text-red-400">*</span>
-                </label>
-                <select
-                  id="roleId"
-                  name="roleId"
-                  required
-                  defaultValue={targetUser.roleId}
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  {roles.map((r: (typeof roles)[number]) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {actor.roleKey === "SUPERADMIN" && (
-                <div>
-                  <label
-                    htmlFor="clientId"
-                    className="block text-sm font-medium text-zinc-400 mb-2"
-                  >
-                    Cliente
-                  </label>
-                  <select
-                    id="clientId"
-                    name="clientId"
-                    defaultValue={targetUser.clientId ?? ""}
-                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                  >
-                    <option value="">Sin cliente (global)</option>
-                    {clients.map((c: (typeof clients)[number]) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            <RoleClientSelector
+              roles={roles.map((r: (typeof roles)[number]) => ({ id: r.id, key: r.key, name: r.name }))}
+              clients={clients}
+              defaultRoleId={targetUser.roleId}
+              defaultClientId={targetUser.clientId}
+              defaultClientIds={userClientIds}
+              isSuperAdmin={actor.roleKey === "SUPERADMIN"}
+            />
 
             {targetUser.id !== actor.id && (
               <div className="flex items-center gap-3">

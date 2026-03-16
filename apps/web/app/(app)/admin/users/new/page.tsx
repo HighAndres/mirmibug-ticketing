@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createUser } from "@/lib/actions/admin";
 import { filterAssignableRoles } from "@/lib/permissions";
+import RoleClientSelector from "../role-client-selector";
 
 export const metadata = { title: "Nuevo usuario" };
 
@@ -90,48 +91,11 @@ export default async function NewUserPage() {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="roleId" className="block text-sm font-medium text-zinc-400 mb-2">
-                  Rol <span className="text-red-400">*</span>
-                </label>
-                <select
-                  id="roleId"
-                  name="roleId"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  <option value="">Selecciona un rol</option>
-                  {roles.map((r: (typeof roles)[number]) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {user.roleKey === "SUPERADMIN" && (
-                <div>
-                  <label
-                    htmlFor="clientId"
-                    className="block text-sm font-medium text-zinc-400 mb-2"
-                  >
-                    Cliente
-                  </label>
-                  <select
-                    id="clientId"
-                    name="clientId"
-                    className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                  >
-                    <option value="">Sin cliente (global)</option>
-                    {clients.map((c: (typeof clients)[number]) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            <RoleClientSelector
+              roles={roles.map((r: (typeof roles)[number]) => ({ id: r.id, key: r.key, name: r.name }))}
+              clients={clients}
+              isSuperAdmin={user.roleKey === "SUPERADMIN"}
+            />
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link

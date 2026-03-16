@@ -75,6 +75,7 @@ export async function GET(request: Request) {
     byStatusRaw,
     byPriorityRaw,
     byAssigneeRaw,
+    byCategoryRaw,
     allTickets,
   ] = await Promise.all([
     prisma.ticket.count({ where: clientFilter }),
@@ -110,6 +111,13 @@ export async function GET(request: Request) {
       orderBy: { _count: { id: "desc" } },
       take: 10,
     }),
+    prisma.ticket.groupBy({
+      by: ["categoryId"],
+      where: clientFilter,
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 10,
+    }),
     prisma.ticket.findMany({
       where: clientFilter,
       orderBy: { createdAt: "desc" },
@@ -136,6 +144,20 @@ export async function GET(request: Request) {
 
   const agentNameMap = Object.fromEntries(agentNames.map((a: (typeof agentNames)[number]) => [a.id, a.name]));
 
+  // Category names for category stats
+  const categoryIds = byCategoryRaw
+    .map((r: (typeof byCategoryRaw)[number]) => r.categoryId)
+    .filter(Boolean) as string[];
+
+  const categoryNames = categoryIds.length
+    ? await prisma.category.findMany({
+        where: { id: { in: categoryIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+
+  const categoryNameMap = Object.fromEntries(categoryNames.map((c: (typeof categoryNames)[number]) => [c.id, c.name]));
+
   // ── Build report data ─────────────────────────────────────────────────
   const reportData: ReportData = {
     generatedAt: now,
@@ -159,6 +181,11 @@ export async function GET(request: Request) {
       priority: p.priority,
       label: PRIORITY_LABELS[p.priority] ?? p.priority,
       count: p._count.id,
+    })),
+
+    byCategory: byCategoryRaw.map((c: (typeof byCategoryRaw)[number]) => ({
+      name: categoryNameMap[c.categoryId] ?? "Sin categoría",
+      count: c._count.id,
     })),
 
     byAssignee: byAssigneeRaw.map((a: (typeof byAssigneeRaw)[number]) => ({
