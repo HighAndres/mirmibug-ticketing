@@ -270,7 +270,7 @@ export default async function DashboardPage() {
                         <p className="text-xs text-zinc-400">{u.email}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-[#7CFF8D]">{u.role.name}</p>
+                        <p className="text-xs text-[#7CFF8D]">{u.role?.name ?? "Sin rol"}</p>
                         <p className="text-xs text-zinc-500">
                           {u.client?.name ?? "Global Mirmibug"}
                         </p>
@@ -339,11 +339,11 @@ export default async function DashboardPage() {
                       <td className="px-6 py-4 text-white">{ticket.title}</td>
                       {isSuperAdmin && (
                         <td className="px-6 py-4 text-zinc-300">
-                          {ticket.client.name}
+                          {ticket.client?.name ?? "Sin cliente"}
                         </td>
                       )}
                       <td className="px-6 py-4 text-zinc-300">
-                        {ticket.requester.name}
+                        {ticket.requester?.name ?? "Sin solicitante"}
                       </td>
                       <td className="px-6 py-4 text-zinc-300">
                         {ticket.assignee?.name ?? "Sin asignar"}

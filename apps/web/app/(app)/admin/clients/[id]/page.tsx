@@ -105,7 +105,7 @@ export default async function ClientDetailPage({
 
   // Role counts
   const roleCounts = users.reduce((acc: Record<string, number>, u: (typeof users)[number]) => {
-    const key = u.role.key;
+    const key = u.role?.key ?? "UNKNOWN";
     acc[key] = (acc[key] ?? 0) + 1;
     return acc;
   }, {});
@@ -344,9 +344,9 @@ export default async function ClientDetailPage({
                       <td className="py-2.5 pr-4 text-xs text-zinc-400">{u.email}</td>
                       <td className="py-2.5 pr-4">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[u.role.key] ?? "text-zinc-400 bg-zinc-500/10"}`}
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[u.role?.key ?? ""] ?? "text-zinc-400 bg-zinc-500/10"}`}
                         >
-                          {u.role.name}
+                          {u.role?.name ?? "Sin rol"}
                         </span>
                       </td>
                       <td className="py-2.5 pr-4">
@@ -419,8 +419,8 @@ export default async function ClientDetailPage({
                           {t.title}
                         </Link>
                       </td>
-                      <td className="py-2.5 pr-4 text-xs text-zinc-400">{t.category.name}</td>
-                      <td className="py-2.5 pr-4 text-xs text-zinc-400">{t.requester.name}</td>
+                      <td className="py-2.5 pr-4 text-xs text-zinc-400">{t.category?.name ?? "Sin categoría"}</td>
+                      <td className="py-2.5 pr-4 text-xs text-zinc-400">{t.requester?.name ?? "Sin solicitante"}</td>
                       <td className="py-2.5 pr-4 text-xs text-zinc-400">
                         {t.assignee?.name ?? (
                           <span className="text-zinc-600 italic">Sin asignar</span>

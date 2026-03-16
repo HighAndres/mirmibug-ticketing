@@ -99,7 +99,7 @@ export default async function UsersPage() {
                       )}
                       <td className="px-5 py-3">
                         <span className="inline-flex rounded-full border border-[#38d84e]/30 bg-[#38d84e]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[#7CFF8D]">
-                          {u.role.name}
+                          {u.role?.name ?? "Sin rol"}
                         </span>
                       </td>
                       <td className="px-5 py-3">

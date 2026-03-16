@@ -264,10 +264,10 @@ export default async function TicketDetailPage({ params }: PageProps) {
                       >
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-sm font-medium text-white">
-                            {entry.author.name}
+                            {entry.author?.name ?? "Usuario"}
                           </span>
                           <span className="text-xs text-zinc-600">
-                            {entry.author.role.name}
+                            {entry.author?.role?.name ?? ""}
                           </span>
                           {isInternal && (
                             <span className="text-[10px] font-medium uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/30">
@@ -303,7 +303,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-zinc-400">
-                          <span className="text-zinc-300 font-medium">{entry.actor.name}</span>
+                          <span className="text-zinc-300 font-medium">{entry.actor?.name ?? "Sistema"}</span>
                           {entry.type === "CREATED" && " creó el ticket"}
                           {entry.type === "STATUS_CHANGE" && (
                             <>{" "}cambió el estatus de{" "}
@@ -411,25 +411,25 @@ export default async function TicketDetailPage({ params }: PageProps) {
                   <span
                     className="flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-bold flex-shrink-0"
                     style={{
-                      backgroundColor: (ticket.client.primaryColor ?? "#38d84e") + "22",
-                      color: ticket.client.primaryColor ?? "#38d84e",
+                      backgroundColor: (ticket.client?.primaryColor ?? "#38d84e") + "22",
+                      color: ticket.client?.primaryColor ?? "#38d84e",
                     }}
                   >
-                    {ticket.client.name.charAt(0).toUpperCase()}
+                    {(ticket.client?.name ?? "?").charAt(0).toUpperCase()}
                   </span>
-                  {ticket.client.name}
+                  {ticket.client?.name ?? "Sin cliente"}
                 </dd>
               </div>
               <div>
                 <dt className="text-zinc-500 text-xs mb-1">Categoría</dt>
-                <dd className="text-zinc-300">{ticket.category.name}</dd>
+                <dd className="text-zinc-300">{ticket.category?.name ?? "Sin categoría"}</dd>
               </div>
               <div>
                 <dt className="text-zinc-500 text-xs mb-1">Solicitante</dt>
                 <dd className="text-zinc-300">
-                  {ticket.requester.name}
+                  {ticket.requester?.name ?? "Desconocido"}
                   <span className="ml-1 text-xs text-zinc-600">
-                    ({ticket.requester.role.name})
+                    ({ticket.requester?.role?.name ?? ""})
                   </span>
                 </dd>
               </div>
@@ -527,7 +527,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
               </h2>
               <p className="text-sm text-zinc-300">
                 {ticket.assignee
-                  ? `${ticket.assignee.name} (${ticket.assignee.role.name})`
+                  ? `${ticket.assignee.name} (${ticket.assignee.role?.name ?? ""})`
                   : <span className="italic text-zinc-600">Sin asignar</span>}
               </p>
               <form action={async (fd: FormData) => {
@@ -544,7 +544,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
                   <option value="">Sin asignar</option>
                   {agents.map((a: (typeof agents)[number]) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} — {a.role.name}
+                      {a.name} — {a.role?.name ?? ""}
                     </option>
                   ))}
                 </select>

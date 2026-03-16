@@ -362,7 +362,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                           {ticket.title}
                         </Link>
                         <p className="text-xs text-zinc-500 mt-0.5">
-                          {ticket.requester.name}
+                          {ticket.requester?.name ?? "Sin solicitante"}
                         </p>
                       </td>
                       {(user.roleKey === "SUPERADMIN" || (user.roleKey === "AGENT" && agentClientIds.length > 1)) && (
@@ -370,14 +370,14 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                           <span className="inline-flex items-center gap-1.5 text-xs text-zinc-300">
                             <span
                               className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: ticket.client.primaryColor ?? "#38d84e" }}
+                              style={{ backgroundColor: ticket.client?.primaryColor ?? "#38d84e" }}
                             />
-                            {ticket.client.name}
+                            {ticket.client?.name ?? "Sin cliente"}
                           </span>
                         </td>
                       )}
                       <td className="px-5 py-3 text-zinc-400 text-xs">
-                        {ticket.category.name}
+                        {ticket.category?.name ?? "Sin categoría"}
                       </td>
                       <td className="px-5 py-3 text-zinc-400 text-xs">
                         {ticket.assignee?.name ?? (
