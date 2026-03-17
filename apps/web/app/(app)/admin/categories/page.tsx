@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { deleteCategory, deleteSubcategory } from "@/lib/actions/admin";
 import ClientFilter from "./client-filter";
+import { getUserClientIds } from "@/lib/permissions";
 
 export const metadata = { title: "Categorías" };
 
@@ -20,11 +21,17 @@ export default async function CategoriesPage({
   const params = await searchParams;
   const filterClientId = params.clientId;
 
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : [];
+
   // Filtro base por tenant
   const clientFilter = isSuperAdmin
     ? filterClientId
       ? { clientId: filterClientId }
       : {}
+    : user.roleKey === "AGENT" && agentClientIds.length > 0
+    ? { clientId: { in: agentClientIds } }
     : { clientId: user.clientId ?? "__none__" };
 
   const [categories, clients] = await Promise.all([
@@ -96,7 +103,7 @@ export default async function CategoriesPage({
                       <span className="text-xs text-zinc-500">{cat.description}</span>
                     )}
                     {isSuperAdmin && (
-                      <span className="text-xs text-zinc-600">— {cat.client.name}</span>
+                      <span className="text-xs text-zinc-600">— {cat.client?.name ?? "Sin cliente"}</span>
                     )}
                     <span className="text-xs text-zinc-600">
                       {cat._count.tickets} ticket{cat._count.tickets !== 1 ? "s" : ""}

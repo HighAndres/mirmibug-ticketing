@@ -32,7 +32,9 @@ export default async function NewTicketPage() {
     ? {}
     : isAgentMultiClient
     ? { clientId: { in: agentClientIds } }
-    : { clientId: user.clientId ?? "__none__" };
+    : user.clientId
+    ? { clientId: user.clientId }
+    : { clientId: "__none__" };
 
   const categories = await prisma.category.findMany({
     where: categoryFilter,

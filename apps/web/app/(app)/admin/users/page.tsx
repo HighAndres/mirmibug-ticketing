@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { toggleUserActive } from "@/lib/actions/admin";
+import { getUserClientIds } from "@/lib/permissions";
 
 export const metadata = { title: "Usuarios" };
 
@@ -13,8 +14,15 @@ export default async function UsersPage() {
   const { user } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
 
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : [];
+
   const clientFilter =
-    user.roleKey === "SUPERADMIN" ? {} : { clientId: user.clientId ?? "__none__" };
+    user.roleKey === "SUPERADMIN" ? {}
+    : user.roleKey === "AGENT" && agentClientIds.length > 0
+    ? { OR: [{ clientId: { in: agentClientIds } }, { userClients: { some: { clientId: { in: agentClientIds } } } }] }
+    : { clientId: user.clientId ?? "__none__" };
 
   const users = await prisma.user.findMany({
     where: clientFilter,

@@ -25,7 +25,9 @@ export default async function ReportsPage() {
       ? {}
       : user.roleKey === "AGENT" && agentClientIds.length > 0
       ? { clientId: { in: agentClientIds } }
-      : { clientId: user.clientId ?? "__none__" };
+      : user.clientId
+      ? { clientId: user.clientId }
+      : { clientId: "__none__" };
 
   // ── Clientes (para selector de descarga SUPERADMIN) ────────────────────────
   const allClients =

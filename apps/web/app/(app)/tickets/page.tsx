@@ -69,7 +69,9 @@ export default async function TicketsPage({ searchParams }: PageProps) {
       ? agentClientIds.length > 0
         ? { clientId: { in: agentClientIds } }
         : { clientId: "__none__" }
-      : { clientId: user.clientId ?? "__none__" };
+      : user.clientId
+      ? { clientId: user.clientId }
+      : { clientId: "__none__" };
 
   // ── Filtro de período ──────────────────────────────────────────────────────
   const now = new Date();
@@ -164,7 +166,9 @@ export default async function TicketsPage({ searchParams }: PageProps) {
                   ...(agentClientIds.length > 0 ? [{ clientId: { in: agentClientIds } }] : []),
                 ],
               }
-            : { clientId: user.clientId ?? "__none__", role: { key: { in: ["AGENT", "CLIENT_ADMIN", "CLIENT_SUPERVISOR"] } } },
+            : user.clientId
+            ? { clientId: user.clientId, role: { key: { in: ["AGENT", "CLIENT_ADMIN", "CLIENT_SUPERVISOR"] } } }
+            : { role: { key: { in: ["AGENT", "CLIENT_ADMIN", "CLIENT_SUPERVISOR"] } } },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       })
