@@ -280,7 +280,7 @@ export async function toggleClientActive(id: string) {
 // ── Categories ────────────────────────────────────────────────────────────────
 
 export async function createCategory(formData: FormData) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const actor = session.user;
 
   const name = (formData.get("name") as string).trim();
@@ -311,7 +311,7 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const actor = session.user;
 
   const existing = await prisma.category.findUnique({ where: { id } });
@@ -332,7 +332,7 @@ export async function updateCategory(id: string, formData: FormData) {
 }
 
 export async function deleteCategory(id: string) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const actor = session.user;
 
   const cat = await prisma.category.findUnique({
@@ -355,7 +355,7 @@ export async function deleteCategory(id: string) {
 // ── Subcategories ─────────────────────────────────────────────────────────────
 
 export async function createSubcategory(formData: FormData) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const actor = session.user;
 
   const name = (formData.get("name") as string).trim();
@@ -390,7 +390,7 @@ export async function createSubcategory(formData: FormData) {
 }
 
 export async function deleteSubcategory(id: string) {
-  const session = await requireAuth();
+  const session = await requireAdmin();
   const actor = session.user;
 
   const sub = await prisma.subcategory.findUnique({

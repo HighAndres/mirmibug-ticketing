@@ -16,6 +16,7 @@ export default async function NewSubcategoryPage({
   if (!session) redirect("/login");
 
   const { user } = session;
+  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
 
   const category = await prisma.category.findUnique({
     where: { id },

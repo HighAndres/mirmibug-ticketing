@@ -25,8 +25,13 @@ export const USER_ADMIN_ROLES = ["SUPERADMIN", "CLIENT_ADMIN"] as const;
 /** Roles con acceso a reportes */
 export const REPORT_ROLES = ["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_SUPERVISOR"] as const;
 
-/** Roles que no deben ser asignables por un CLIENT_ADMIN (roles globales / de nivel superior) */
-const FORBIDDEN_ROLE_KEYS_FOR_CLIENT_ADMIN = ["SUPERADMIN"] as const;
+/**
+ * Roles que no deben ser asignables por un CLIENT_ADMIN.
+ * - SUPERADMIN: nivel superior global
+ * - AGENT: rol global/multi-tenant sin empresa fija; un CLIENT_ADMIN
+ *   no debería poder crear agentes globales, solo usuarios de su empresa.
+ */
+const FORBIDDEN_ROLE_KEYS_FOR_CLIENT_ADMIN = ["SUPERADMIN", "AGENT"] as const;
 
 // ---------------------------------------------------------------------------
 // Type helpers

@@ -11,7 +11,7 @@ export default async function NewCategoryPage() {
   if (!session) redirect("/login");
 
   const { user } = session;
-  // Todos los roles autenticados pueden crear categorías
+  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
 
   const clients =
     user.roleKey === "SUPERADMIN"
