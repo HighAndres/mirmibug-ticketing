@@ -16,7 +16,7 @@ export default async function EditCategoryPage({
   if (!session) redirect("/login");
 
   const { user } = session;
-  // Todos los roles autenticados pueden editar categorías de su tenant
+  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
 
   const cat = await prisma.category.findUnique({
     where: { id },

@@ -170,7 +170,8 @@ export default async function TicketsPage({ searchParams }: PageProps) {
       })
     : [];
 
-  const canCreate = ["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_USER", "CLIENT_SUPERVISOR"].includes(
+  // CLIENT_SUPERVISOR es solo lectura — no puede abrir tickets
+  const canCreate = ["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_USER"].includes(
     user.roleKey
   );
 

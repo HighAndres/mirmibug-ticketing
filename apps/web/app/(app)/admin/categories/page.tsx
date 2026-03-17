@@ -16,6 +16,8 @@ export default async function CategoriesPage({
   if (!session) redirect("/login");
 
   const { user } = session;
+  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
+
   const isSuperAdmin = user.roleKey === "SUPERADMIN";
   const params = await searchParams;
   const filterClientId = params.clientId;
