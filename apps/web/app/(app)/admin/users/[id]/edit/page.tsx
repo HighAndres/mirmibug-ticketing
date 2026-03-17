@@ -48,7 +48,7 @@ export default async function EditUserPage({
   const updateAction = updateUser.bind(null, id);
 
   // Clientes asignados vía UserClient (para agentes multi-cliente)
-  const userClientIds = targetUser.userClients.map((uc) => uc.clientId);
+  const userClientIds = targetUser.userClients.map((uc: { clientId: string }) => uc.clientId);
 
   return (
     <div className="min-h-full bg-[#0a0a0a] text-white">
