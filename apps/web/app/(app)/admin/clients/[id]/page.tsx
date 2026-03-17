@@ -308,7 +308,7 @@ export default async function ClientDetailPage({
             <div>
               <h2 className="text-sm font-semibold text-zinc-300">Usuarios del cliente</h2>
               <div className="flex items-center gap-2 mt-1">
-                {Object.entries(roleCounts).map(([role, count]) => (
+                {(Object.entries(roleCounts) as [string, number][]).map(([role, count]) => (
                   <span
                     key={role}
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[role] ?? "text-zinc-400 bg-zinc-500/10"}`}
