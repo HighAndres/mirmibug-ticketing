@@ -313,7 +313,7 @@ export default async function ClientDetailPage({
                     key={role}
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[role] ?? "text-zinc-400 bg-zinc-500/10"}`}
                   >
-                    {count} {role.replace("CLIENT_", "").toLowerCase()}
+                    {count as number} {role.replace("CLIENT_", "").toLowerCase()}
                   </span>
                 ))}
               </div>

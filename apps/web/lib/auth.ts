@@ -40,6 +40,62 @@ const LOCKOUT_MINUTES = 15;
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
 
+  callbacks: {
+    ...authConfig.callbacks,
+
+    async jwt({ token, user }) {
+      // Primera vez (login): enriquecer token con datos del usuario
+      if (user) {
+        token.id = user.id;
+        token.roleKey = (user as { roleKey: string }).roleKey;
+        token.roleName = (user as { roleName: string }).roleName;
+        token.clientId = (user as { clientId: string | null }).clientId;
+        token.clientName = (user as { clientName: string | null }).clientName;
+        token.clientSlug = (user as { clientSlug: string | null }).clientSlug;
+        token.issuedAt = Date.now();
+      }
+
+      // Verificar invalidación de sesión (cada request)
+      if (token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { isActive: true, tokenInvalidatedAt: true },
+        });
+
+        // Si el usuario fue desactivado o no existe, invalidar token
+        if (!dbUser || !dbUser.isActive) {
+          return { ...token, invalidated: true };
+        }
+
+        // Si el token fue emitido antes de tokenInvalidatedAt, invalidar
+        if (
+          dbUser.tokenInvalidatedAt &&
+          typeof token.issuedAt === "number" &&
+          token.issuedAt < dbUser.tokenInvalidatedAt.getTime()
+        ) {
+          return { ...token, invalidated: true };
+        }
+      }
+
+      return token;
+    },
+
+    session({ session, token }) {
+      // Si el token fue invalidado, devolver sesión sin usuario
+      if (token.invalidated) {
+        return { ...session, user: undefined as unknown as typeof session.user, invalidated: true };
+      }
+
+      session.user.id = token.id as string;
+      session.user.roleKey = token.roleKey as string;
+      session.user.roleName = token.roleName as string;
+      session.user.clientId = token.clientId as string | null;
+      session.user.clientName = token.clientName as string | null;
+      session.user.clientSlug = token.clientSlug as string | null;
+      return session;
+    },
+  },
+
   providers: [
     Credentials({
       name: "Credenciales",

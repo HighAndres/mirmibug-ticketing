@@ -22,7 +22,7 @@ export default async function NewTicketPage() {
       where: { userId: user.id },
       select: { clientId: true },
     });
-    agentClientIds = rows.map((r) => r.clientId);
+    agentClientIds = rows.map((r: (typeof rows)[number]) => r.clientId);
   }
 
   const needsClientSelector = isSuperAdmin || (isAgentMultiClient && agentClientIds.length > 1);

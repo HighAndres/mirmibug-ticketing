@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 
 // ---------------------------------------------------------------------------
@@ -51,6 +51,8 @@ export default function LoginForm({
   callbackUrl = "/dashboard",
 }: LoginFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inactivityLogout = searchParams.get("reason") === "inactivity";
 
   // Derivar colores con validación
   const primary =
@@ -295,6 +297,13 @@ export default function LoginForm({
           onSubmit={handleSubmit}
           className="rounded-2xl border border-white/10 bg-[#111111]/80 p-6 shadow-xl shadow-black/30 backdrop-blur-sm"
         >
+          {/* Inactivity message */}
+          {inactivityLogout && !error && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+              Tu sesión se cerró por inactividad. Ingresa de nuevo para continuar.
+            </div>
+          )}
+
           {/* Error */}
           {error && (
             <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">

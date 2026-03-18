@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { MobileMenuButton, MobileSidebarWrapper } from "@/components/MobileSidebar";
+import InactivityGuard from "@/components/InactivityGuard";
 
 // ---------------------------------------------------------------------------
 // Definición de navegación por rol
@@ -198,6 +199,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-white">
+      <InactivityGuard />
 
       {/* ---- Sidebar Desktop (oculto en mobile) ---- */}
       <aside className="hidden lg:flex w-64 flex-col border-r border-white/10 bg-[#0f0f0f] shrink-0">
