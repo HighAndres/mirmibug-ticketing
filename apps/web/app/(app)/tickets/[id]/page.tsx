@@ -121,7 +121,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   // Visibilidad de comentarios: CLIENT_USER no ve notas internas
   const visibleComments = ticket.comments.filter(
-    (c) => !c.isInternal || !isClientUser
+    (c: (typeof ticket.comments)[number]) => !c.isInternal || !isClientUser
   );
 
   // Timeline combinado: comentarios + actividades, ordenado por fecha
@@ -130,8 +130,8 @@ export default async function TicketDetailPage({ params }: PageProps) {
   type TimelineEntry = TimelineComment | TimelineActivity;
 
   const timeline: TimelineEntry[] = [
-    ...visibleComments.map((c): TimelineComment => ({ ...c, _kind: "comment" })),
-    ...ticket.activities.map((a): TimelineActivity => ({ ...a, _kind: "activity" })),
+    ...visibleComments.map((c: (typeof visibleComments)[number]): TimelineComment => ({ ...c, _kind: "comment" })),
+    ...ticket.activities.map((a: (typeof ticket.activities)[number]): TimelineActivity => ({ ...a, _kind: "activity" })),
   ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   return (

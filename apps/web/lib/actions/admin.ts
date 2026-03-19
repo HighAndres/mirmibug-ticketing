@@ -172,14 +172,51 @@ export async function toggleUserActive(id: string) {
   }
   if (user.id === actor.id) throw new Error("No puedes desactivar tu propia cuenta");
 
-  await prisma.user.update({ where: { id }, data: { isActive: !user.isActive } });
+  const newActive = !user.isActive;
+  await prisma.user.update({
+    where: { id },
+    data: {
+      isActive: newActive,
+      // Al desactivar, invalidar todas las sesiones activas
+      ...(!newActive && { tokenInvalidatedAt: new Date() }),
+    },
+  });
 
   await prisma.auditLog.create({
     data: {
       action: "UPDATE",
       entityType: "User",
       entityId: id,
-      description: `Usuario ${user.email} ${!user.isActive ? "activado" : "desactivado"}`,
+      description: `Usuario ${user.email} ${newActive ? "activado" : "desactivado"}`,
+      actorId: actor.id,
+    },
+  });
+
+  revalidatePath("/admin/users");
+}
+
+export async function invalidateUserSessions(id: string) {
+  const session = await requireAdmin();
+  const actor = session.user;
+
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user) throw new Error("Usuario no encontrado");
+  if (actor.roleKey === "CLIENT_ADMIN" && user.clientId !== actor.clientId) {
+    throw new Error("No autorizado");
+  }
+  if (user.id === actor.id) throw new Error("No puedes cerrar tu propia sesión desde aquí");
+
+  await prisma.user.update({
+    where: { id },
+    data: { tokenInvalidatedAt: new Date() },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "LOGOUT",
+      entityType: "User",
+      entityId: id,
+      description: `Sesiones de ${user.email} invalidadas por administrador`,
       actorId: actor.id,
     },
   });
