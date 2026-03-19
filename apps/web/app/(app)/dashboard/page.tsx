@@ -68,7 +68,9 @@ export default async function DashboardPage() {
     ? {}
     : user.roleKey === "AGENT" && agentClientIds.length > 0
     ? { clientId: { in: agentClientIds } }
-    : { clientId: user.clientId ?? "__none__" };
+    : user.clientId
+    ? { clientId: user.clientId }
+    : { clientId: "__none__" };
 
   // Cargar datos del cliente para mostrar branding en el dashboard
   const clientCompany = !isSuperAdmin && user.clientId
