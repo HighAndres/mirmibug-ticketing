@@ -252,11 +252,11 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
   // Email: notificar al nuevo asignado
   if (assigneeId) {
     prisma.user.findUnique({ where: { id: assigneeId }, select: { email: true, name: true } })
-      .then((assignee) => {
+      .then((assignee: { email: string; name: string | null } | null) => {
         if (assignee) {
           notifyTicketAssigned(
             assignee.email,
-            assignee.name,
+            assignee.name ?? "Usuario",
             { id: ticketId, folio: ticket.folio, title: ticket.title, status: "IN_PROGRESS", priority: ticket.priority },
             ticket.requester.name
           ).catch(console.error);

@@ -73,7 +73,7 @@ export async function getUserClientIds(userId: string, roleKey: RoleKey, clientI
       where: { userId },
       select: { clientId: true },
     });
-    return rows.map((r) => r.clientId);
+    return rows.map((r: (typeof rows)[number]) => r.clientId);
   }
   // Roles de cliente: retornan su clientId directo
   return clientId ? [clientId] : [];

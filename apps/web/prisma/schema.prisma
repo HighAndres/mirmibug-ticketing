@@ -124,6 +124,7 @@ model User {
   failedLoginAttempts Int              @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
+  tokenInvalidatedAt  DateTime?
   clientId            String?
   roleId              String
   createdAt           DateTime         @default(now())

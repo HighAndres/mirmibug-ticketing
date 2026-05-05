@@ -54,6 +54,7 @@ export const authConfig: NextAuthConfig = {
         token.clientId = (user as { clientId: string | null }).clientId;
         token.clientName = (user as { clientName: string | null }).clientName;
         token.clientSlug = (user as { clientSlug: string | null }).clientSlug;
+        token.issuedAt = Date.now();
       }
       return token;
     },
