@@ -7,7 +7,9 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import fs from "fs/promises";
 import path from "path";
-import { validateRoleAssignment } from "@/lib/permissions";
+import { validateRoleAssignment, filterAssignableRoles } from "@/lib/permissions";
+import { isValidHexColor } from "@/lib/colors";
+import { getPublicPath, getAppDir } from "@/lib/uploads";
 
 // ── Guard helpers ─────────────────────────────────────────────────────────────
 
@@ -469,32 +471,62 @@ export async function updateClientBranding(id: string, formData: FormData) {
   const ticketPrefixRaw = (formData.get("ticketPrefix") as string)?.trim().toUpperCase().replace(/[^A-Z0-9]/g, "") || null;
   const ticketPrefix = ticketPrefixRaw ? ticketPrefixRaw.slice(0, 10) : null;
 
+  if (primaryColor && !isValidHexColor(primaryColor)) {
+    throw new Error("El color primario debe ser un hex válido, ej. #38d84e");
+  }
+  if (accentColor && !isValidHexColor(accentColor)) {
+    throw new Error("El color de acento debe ser un hex válido, ej. #7CFF8D");
+  }
+  if (supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) {
+    throw new Error("El email de soporte no es válido");
+  }
+
+  // El prefijo de folio debe ser único entre clientes (el contador es por prefijo)
+  if (ticketPrefix) {
+    const prefixTaken = await prisma.clientCompany.findFirst({
+      where: { ticketPrefix, NOT: { id } },
+      select: { name: true },
+    });
+    if (prefixTaken) {
+      throw new Error(`El prefijo "${ticketPrefix}" ya lo usa el cliente "${prefixTaken.name}"`);
+    }
+  }
+
   // Logo upload (optional)
   let logoUrl = client.logoUrl;
   const logoFile = formData.get("logo") as File | null;
 
   if (logoFile && logoFile.size > 0) {
-    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"];
-    if (!allowedTypes.includes(logoFile.type)) {
-      throw new Error("Formato de imagen no soportado. Usa PNG, JPG, WebP o SVG.");
+    // SVG excluido a propósito: puede contener scripts (XSS almacenado)
+    const extByMime: Record<string, string> = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/jpg": "jpg",
+      "image/webp": "webp",
+    };
+    const ext = extByMime[logoFile.type];
+    if (!ext) {
+      throw new Error("Formato de imagen no soportado. Usa PNG, JPG o WebP.");
     }
     if (logoFile.size > 2 * 1024 * 1024) {
       throw new Error("El logo no puede superar 2 MB.");
     }
 
-    const ext = logoFile.name.split(".").pop()?.toLowerCase() ?? "png";
     const filename = `${id}.${ext}`;
-
-    // Resolve upload directory relative to the app's public folder
-    const appDir =
-      process.env.APP_DIR ??
-      path.dirname((process.env.DATABASE_URL ?? "").replace(/^file:/, ""));
-    const uploadDir = path.join(appDir, "public", "uploads", "logos");
+    const uploadDir = getPublicPath("uploads", "logos");
     await fs.mkdir(uploadDir, { recursive: true });
 
     const bytes = await logoFile.arrayBuffer();
     await fs.writeFile(path.join(uploadDir, filename), Buffer.from(bytes));
-    logoUrl = `/uploads/logos/${filename}`;
+
+    // Borrar el archivo anterior si tenía otra extensión
+    const previousPath = client.logoUrl?.split("?")[0];
+    if (previousPath && previousPath !== `/uploads/logos/${filename}`) {
+      await fs.unlink(path.join(getAppDir(), "public", previousPath)).catch(() => {});
+    }
+
+    // ?v= rompe la caché del navegador cuando se reemplaza el logo
+    logoUrl = `/uploads/logos/${filename}?v=${Date.now()}`;
   }
 
   await prisma.clientCompany.update({
@@ -535,10 +567,9 @@ export async function removeClientLogo(id: string) {
   if (!client) throw new Error("Cliente no encontrado");
 
   if (client.logoUrl) {
-    const appDir =
-      process.env.APP_DIR ??
-      path.dirname((process.env.DATABASE_URL ?? "").replace(/^file:/, ""));
-    const filePath = path.join(appDir, "public", client.logoUrl);
+    // Quitar el query de cache-busting (?v=...) antes de resolver la ruta en disco
+    const storedPath = client.logoUrl.split("?")[0];
+    const filePath = path.join(getAppDir(), "public", storedPath);
     await fs.unlink(filePath).catch(() => {});
   }
 
@@ -616,14 +647,22 @@ export async function importUsers(
   // Skip header row
   const dataLines = lines.slice(1);
 
-  // Cache roles and clients for quick lookup
-  const roles = await prisma.role.findMany({ select: { id: true, key: true } });
+  // Cache roles and clients for quick lookup.
+  // Solo roles asignables por el actor (anti escalación: un CLIENT_ADMIN
+  // no puede importar SUPERADMIN ni AGENT vía CSV).
+  const allRoles = await prisma.role.findMany({ select: { id: true, key: true } });
+  const roles = filterAssignableRoles(allRoles, actor.roleKey);
   const roleMap = Object.fromEntries(roles.map((r: (typeof roles)[number]) => [r.key.toUpperCase(), r.id]));
 
   const clients = actor.roleKey === "SUPERADMIN"
     ? await prisma.clientCompany.findMany({ select: { id: true, slug: true } })
     : [];
-  const clientMap = Object.fromEntries(clients.map((c: (typeof clients)[number]) => [c.id, c.id]));
+  // Acepta id o slug del cliente en la columna clientId del CSV
+  const clientMap: Record<string, string> = {};
+  for (const c of clients) {
+    clientMap[c.id] = c.id;
+    clientMap[c.slug] = c.id;
+  }
 
   const rows: ImportRow[] = [];
   let success = 0;
@@ -663,7 +702,14 @@ export async function importUsers(
     // Determine clientId
     let clientId: string | null = null;
     if (actor.roleKey === "SUPERADMIN") {
-      clientId = clientIdInput ? (clientMap[clientIdInput] ?? null) : null;
+      if (clientIdInput) {
+        clientId = clientMap[clientIdInput] ?? null;
+        if (!clientId) {
+          rows.push({ row: rowNum, name, email, status: "error", error: `Cliente no encontrado: "${clientIdInput}" (usa el id o el slug del cliente)` });
+          errors++;
+          continue;
+        }
+      }
     } else {
       clientId = actor.clientId ?? null;
     }

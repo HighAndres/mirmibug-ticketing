@@ -119,11 +119,11 @@ export default function BrandingForm({ client }: { client: Client }) {
                 ref={fileRef}
                 name="logo"
                 type="file"
-                accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
                 onChange={handleFileChange}
                 className="block w-full text-sm text-zinc-400 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-white hover:file:bg-white/20 cursor-pointer"
               />
-              <p className="text-xs text-zinc-600">PNG, JPG, WebP o SVG · máx 2 MB</p>
+              <p className="text-xs text-zinc-600">PNG, JPG o WebP · máx 2 MB</p>
               {client.logoUrl && (
                 <button
                   type="button"
@@ -155,6 +155,8 @@ export default function BrandingForm({ client }: { client: Client }) {
                 type="text"
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
+                pattern="#[0-9A-Fa-f]{6}"
+                title="Color hex de 6 dígitos, ej. #38d84e"
                 className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono outline-none focus:border-[#38d84e]/50"
                 placeholder="#38d84e"
               />
@@ -186,6 +188,8 @@ export default function BrandingForm({ client }: { client: Client }) {
                 type="text"
                 value={accentColor}
                 onChange={(e) => setAccentColor(e.target.value)}
+                pattern="#[0-9A-Fa-f]{6}"
+                title="Color hex de 6 dígitos, ej. #38d84e"
                 className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono outline-none focus:border-[#38d84e]/50"
                 placeholder="#7CFF8D"
               />

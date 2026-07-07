@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { canAccessTicket } from "@/lib/permissions";
+import { canAccessTicket, getUserClientIds } from "@/lib/permissions";
+import { getPublicPath } from "@/lib/uploads";
 import fs from "fs/promises";
 import path from "path";
 
 function getUploadDir() {
-  const appDir =
-    process.env.APP_DIR ??
-    path.dirname((process.env.DATABASE_URL ?? "").replace(/^file:/, ""));
-  return path.join(appDir, "public", "uploads", "attachments");
+  return getPublicPath("uploads", "attachments");
 }
 
 export async function GET(
@@ -35,8 +33,12 @@ export async function GET(
     return NextResponse.json({ error: "Archivo no encontrado" }, { status: 404 });
   }
 
-  // Verificar acceso al ticket del adjunto
-  if (!canAccessTicket(user, attachment.ticket)) {
+  // Verificar acceso al ticket del adjunto (incluye agentes multi-cliente)
+  const agentClientIds =
+    user.roleKey === "AGENT"
+      ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+      : undefined;
+  if (!canAccessTicket(user, attachment.ticket, agentClientIds)) {
     return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
   }
 

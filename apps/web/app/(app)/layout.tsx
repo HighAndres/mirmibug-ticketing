@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MobileMenuButton, MobileSidebarWrapper } from "@/components/MobileSidebar";
 import InactivityGuard from "@/components/InactivityGuard";
+import { isValidHexColor } from "@/lib/colors";
 
 // ---------------------------------------------------------------------------
 // Definición de navegación por rol
@@ -180,8 +181,14 @@ export default async function AppLayout({
       })
     : null;
 
-  const primary = clientBranding?.primaryColor ?? "#38d84e";
-  const accent = clientBranding?.accentColor ?? "#7CFF8D";
+  const primary =
+    clientBranding?.primaryColor && isValidHexColor(clientBranding.primaryColor)
+      ? clientBranding.primaryColor
+      : "#38d84e";
+  const accent =
+    clientBranding?.accentColor && isValidHexColor(clientBranding.accentColor)
+      ? clientBranding.accentColor
+      : "#7CFF8D";
 
   const sidebarProps = {
     user: {

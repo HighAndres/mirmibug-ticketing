@@ -11,7 +11,7 @@ import {
 } from "@/lib/mailer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenantAsync, getUserClientIds } from "@/lib/permissions";
+import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenant, isSameTenantAsync, getUserClientIds } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Crear ticket
@@ -45,21 +45,49 @@ export async function createTicket(formData: FormData) {
 
   if (!clientId) throw new Error("Cliente requerido");
 
-  const folio = await generateFolio(clientId);
-
-  const ticket = await prisma.ticket.create({
-    data: {
-      folio,
-      title: title.trim(),
-      description: description.trim(),
-      priority: (priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT") ?? "MEDIUM",
-      status: "OPEN",
-      requesterId: user.id,
-      categoryId,
-      subcategoryId,
-      clientId,
-    },
+  // La categoría (y subcategoría) deben pertenecer al cliente del ticket
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { clientId: true },
   });
+  if (!category || category.clientId !== clientId) {
+    throw new Error("Categoría no válida para este cliente");
+  }
+  if (subcategoryId) {
+    const sub = await prisma.subcategory.findUnique({
+      where: { id: subcategoryId },
+      select: { categoryId: true },
+    });
+    if (!sub || sub.categoryId !== categoryId) {
+      throw new Error("Subcategoría no válida para esta categoría");
+    }
+  }
+
+  // Crear con reintento: dos creaciones simultáneas pueden calcular el mismo
+  // folio y chocar con el unique; se regenera y reintenta.
+  let ticket;
+  for (let attempt = 0; ; attempt++) {
+    const folio = await generateFolio(clientId);
+    try {
+      ticket = await prisma.ticket.create({
+        data: {
+          folio,
+          title: title.trim(),
+          description: description.trim(),
+          priority: (priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT") ?? "MEDIUM",
+          status: "OPEN",
+          requesterId: user.id,
+          categoryId,
+          subcategoryId,
+          clientId,
+        },
+      });
+      break;
+    } catch (err) {
+      if ((err as { code?: string }).code === "P2002" && attempt < 4) continue;
+      throw err;
+    }
+  }
 
   await Promise.all([
     prisma.auditLog.create({
@@ -67,9 +95,9 @@ export async function createTicket(formData: FormData) {
         action: "CREATE",
         entityType: "Ticket",
         entityId: ticket.id,
-        description: `Ticket ${folio} creado: "${title}"`,
+        description: `Ticket ${ticket.folio} creado: "${title}"`,
         actorId: user.id,
-        metadataJson: JSON.stringify({ folio, clientId, categoryId }),
+        metadataJson: JSON.stringify({ folio: ticket.folio, clientId, categoryId }),
       },
     }),
     prisma.ticketActivity.create({
@@ -111,6 +139,11 @@ export async function changeTicketStatus(ticketId: string, status: string) {
   });
 
   if (!ticket) throw new Error("Ticket no encontrado");
+
+  const VALID_STATUSES = ["OPEN", "IN_PROGRESS", "PENDING", "RESOLVED", "CLOSED"];
+  if (!VALID_STATUSES.includes(status)) {
+    throw new Error("Estatus no válido");
+  }
 
   // Autorización: CLIENT_USER solo puede cerrar SUS PROPIOS tickets
   if (user.roleKey === "CLIENT_USER") {
@@ -200,6 +233,35 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 
   if (!(await isSameTenantAsync(user, ticket.clientId))) {
     throw new Error("Sin permisos para este ticket");
+  }
+
+  // El asignado debe ser un rol de gestión activo con acceso al tenant del ticket
+  if (assigneeId) {
+    const assignee = await prisma.user.findUnique({
+      where: { id: assigneeId },
+      select: {
+        clientId: true,
+        isActive: true,
+        role: { select: { key: true } },
+        userClients: { select: { clientId: true } },
+      },
+    });
+    if (!assignee || !assignee.isActive) {
+      throw new Error("Usuario asignado no válido");
+    }
+    if (!canManageTickets(assignee.role.key)) {
+      throw new Error("Solo se pueden asignar tickets a agentes o administradores");
+    }
+    const assigneeClientIds = assignee.userClients.map((uc: { clientId: string }) => uc.clientId);
+    if (
+      !isSameTenant(
+        { id: assigneeId, roleKey: assignee.role.key, clientId: assignee.clientId },
+        ticket.clientId,
+        assigneeClientIds
+      )
+    ) {
+      throw new Error("El usuario asignado no tiene acceso a este cliente");
+    }
   }
 
   // Obtener asignado anterior para el timeline

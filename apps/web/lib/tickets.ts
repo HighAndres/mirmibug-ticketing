@@ -15,20 +15,20 @@ export async function generateFolio(clientId: string): Promise<string> {
 
   const prefix = client?.ticketPrefix?.toUpperCase().trim() || "MB";
 
-  // Buscar el último folio con este prefijo
-  const last = await prisma.ticket.findFirst({
+  // Buscar el máximo numérico entre los folios con este prefijo.
+  // No se puede ordenar por folio como texto: "MB-10000" < "MB-9999" alfabéticamente.
+  const rows = await prisma.ticket.findMany({
     where: { folio: { startsWith: `${prefix}-` } },
-    orderBy: { folio: "desc" },
     select: { folio: true },
   });
 
-  let next = 1;
-  if (last) {
-    const num = parseInt(last.folio.replace(`${prefix}-`, ""), 10);
-    if (!isNaN(num)) next = num + 1;
+  let max = 0;
+  for (const { folio } of rows) {
+    const num = parseInt(folio.slice(prefix.length + 1), 10);
+    if (!isNaN(num) && num > max) max = num;
   }
 
-  return `${prefix}-${String(next).padStart(4, "0")}`;
+  return `${prefix}-${String(max + 1).padStart(4, "0")}`;
 }
 
 // ---------------------------------------------------------------------------

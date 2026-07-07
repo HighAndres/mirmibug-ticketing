@@ -97,21 +97,18 @@ export function canAccessTicket(
 ): boolean {
   if (user.roleKey === "SUPERADMIN") return true;
 
-  // Directo: mismo clientId
-  if (user.clientId === ticket.clientId) return true;
-
-  // AGENT: verificar via tabla de asignaciones
-  if (user.roleKey === "AGENT" && agentClientIds?.includes(ticket.clientId)) return true;
-
-  // CLIENT_USER solo ve sus propios tickets
+  // CLIENT_USER: mismo tenant Y debe ser el solicitante
   if (user.roleKey === "CLIENT_USER") {
-    return ticket.requesterId === user.id;
+    return user.clientId === ticket.clientId && ticket.requesterId === user.id;
   }
 
-  // Distinto tenant
-  if (user.clientId !== ticket.clientId) return false;
+  // Roles de gestión: mismo clientId directo
+  if (user.clientId === ticket.clientId) return true;
 
-  return true;
+  // AGENT multi-cliente: verificar via tabla de asignaciones
+  if (user.roleKey === "AGENT" && agentClientIds?.includes(ticket.clientId)) return true;
+
+  return false;
 }
 
 /**
