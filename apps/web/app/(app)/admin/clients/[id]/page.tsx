@@ -118,9 +118,9 @@ export default async function ClientDetailPage({
   };
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-center gap-2 text-sm text-zinc-500 mb-3">
             <Link href="/admin/clients" className="hover:text-zinc-300 transition">
@@ -197,29 +197,29 @@ export default async function ClientDetailPage({
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-4">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Total tickets</p>
             <p className="mt-1 text-2xl font-bold text-white">{totalTickets}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-4">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Activos</p>
             <p className="mt-1 text-2xl font-bold text-amber-400">{activeTickets}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-4">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Resueltos hoy</p>
             <p className="mt-1 text-2xl font-bold text-emerald-400">{resolvedToday}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-4">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Sin asignar</p>
             <p className={`mt-1 text-2xl font-bold ${unassignedTickets > 0 ? "text-red-400" : "text-zinc-500"}`}>
               {unassignedTickets}
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-4">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Esta semana</p>
             <p className="mt-1 text-2xl font-bold text-sky-400">{thisWeekTickets}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-4">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Usuarios</p>
             <p className="mt-1 text-2xl font-bold text-purple-400">{users.length}</p>
           </div>
@@ -228,7 +228,7 @@ export default async function ClientDetailPage({
         {/* Status & Priority distributions */}
         <div className="grid gap-6 lg:grid-cols-2">
           {/* By status */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Tickets por estado</h2>
             {byStatus.length === 0 ? (
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
@@ -265,7 +265,7 @@ export default async function ClientDetailPage({
           </div>
 
           {/* By priority */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Tickets por prioridad</h2>
             {byPriority.length === 0 ? (
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
@@ -303,7 +303,7 @@ export default async function ClientDetailPage({
         </div>
 
         {/* Users section */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-sm font-semibold text-zinc-300">Usuarios del cliente</h2>
@@ -372,7 +372,7 @@ export default async function ClientDetailPage({
         </div>
 
         {/* Recent tickets */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-zinc-300">Tickets recientes</h2>
             <Link
@@ -457,7 +457,7 @@ export default async function ClientDetailPage({
 
         {/* Client info card */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Información del cliente</h2>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
@@ -487,7 +487,7 @@ export default async function ClientDetailPage({
             </dl>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Configuración visual</h2>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between items-center">

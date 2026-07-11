@@ -24,7 +24,9 @@ export default async function UsersPage() {
       include: {
         role: { select: { name: true, key: true } },
         client: { select: { name: true } },
-        _count: { select: { tickets: true } },
+        _count: {
+          select: { tickets: true, comments: true, ticketActivities: true, attachments: true },
+        },
         userClients: { include: { client: { select: { name: true } } } },
       },
     }),
@@ -47,13 +49,17 @@ export default async function UsersPage() {
     clientName: u.client?.name ?? null,
     clientId: u.clientId,
     ticketCount: u._count.tickets,
+    // Borrable solo si no tiene registros con FK restrictiva (tickets propios,
+    // comentarios, actividad o adjuntos). Si los tiene, se debe desactivar.
+    deletable:
+      u._count.tickets + u._count.comments + u._count.ticketActivities + u._count.attachments === 0,
     assignedClientNames: u.userClients.map((uc: { client: { name: string } }) => uc.client.name),
   }));
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Usuarios</h1>

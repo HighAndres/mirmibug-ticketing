@@ -14,7 +14,7 @@ type Subcategory = {
 };
 
 const selectClass =
-  "w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20";
+  "w-full rounded-xl border border-white/10 bg-[#15171c] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20";
 
 export default function CategorySelect({
   categories,

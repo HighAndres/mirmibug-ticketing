@@ -58,10 +58,10 @@ export default async function NewTicketPage() {
     : [];
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
 
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-3xl flex items-center gap-4">
           <Link
             href="/tickets"
@@ -81,7 +81,7 @@ export default async function NewTicketPage() {
       {/* Formulario */}
       <section className="mx-auto max-w-3xl px-6 py-8">
         <form action={createTicket}>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-6 space-y-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-6 space-y-5">
 
             {/* Cliente (SUPERADMIN o agente multi-cliente) */}
             {needsClientSelector && (
@@ -158,7 +158,7 @@ export default async function NewTicketPage() {
                 id="priority"
                 name="priority"
                 defaultValue="MEDIUM"
-                className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
+                className="w-full rounded-xl border border-white/10 bg-[#15171c] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
               >
                 <option value="LOW">Baja</option>
                 <option value="MEDIUM">Media</option>

@@ -198,10 +198,10 @@ export default async function TicketsPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
 
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Tickets</h1>
@@ -221,7 +221,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
       </section>
 
       {/* Filtros */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-3">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-3">
         <div className="mx-auto max-w-7xl">
           <form method="GET" className="flex flex-wrap items-center gap-3">
 
@@ -237,7 +237,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
             <select
               name="status"
               defaultValue={statusFilter ?? ""}
-              className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+              className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="">Todos los estatus</option>
               {Object.entries(STATUS_LABELS).map(([val, label]) => (
@@ -249,7 +249,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
             <select
               name="priority"
               defaultValue={priorityFilter ?? ""}
-              className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+              className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="">Todas las prioridades</option>
               {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
@@ -261,7 +261,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
             <select
               name="period"
               defaultValue={period}
-              className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+              className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="all">Todo el tiempo</option>
               <option value="today">Hoy</option>
@@ -273,7 +273,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
             <select
               name="sort"
               defaultValue={sort}
-              className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+              className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="newest">Más recientes</option>
               <option value="oldest">Más antiguos</option>
@@ -286,7 +286,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
               <select
                 name="assigneeId"
                 defaultValue={assigneeId ?? ""}
-                className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+                className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
               >
                 <option value="">Cualquier asignado</option>
                 <option value="unassigned">Sin asignar</option>
@@ -317,7 +317,7 @@ export default async function TicketsPage({ searchParams }: PageProps) {
 
       {/* Tabla */}
       <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="rounded-2xl border border-white/10 bg-[#111111] overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-white/5 text-left text-zinc-400">

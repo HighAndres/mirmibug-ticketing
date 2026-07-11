@@ -18,8 +18,8 @@ export default async function RolesPage() {
   });
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+    <div className="min-h-full bg-[#15171c] text-white">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-2xl font-bold">Roles y permisos</h1>
           <p className="mt-1 text-sm text-zinc-500">
@@ -30,7 +30,7 @@ export default async function RolesPage() {
 
       <section className="mx-auto max-w-7xl px-6 py-6 space-y-4">
         {roles.map((role: (typeof roles)[number]) => (
-          <div key={role.id} className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div key={role.id} className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <div className="flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-3 flex-wrap">

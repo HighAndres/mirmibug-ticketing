@@ -26,8 +26,8 @@ export default async function NewSubcategoryPage({
   if (user.roleKey !== "SUPERADMIN" && category.clientId !== user.clientId) notFound();
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+    <div className="min-h-full bg-[#15171c] text-white">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-3xl flex items-center gap-4">
           <Link
             href="/admin/categories"
@@ -47,7 +47,7 @@ export default async function NewSubcategoryPage({
       <section className="mx-auto max-w-3xl px-6 py-8">
         <form action={createSubcategory}>
           <input type="hidden" name="categoryId" value={id} />
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-6 space-y-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-6 space-y-5">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-zinc-400 mb-2">
                 Nombre <span className="text-red-400">*</span>

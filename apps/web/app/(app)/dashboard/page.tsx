@@ -125,10 +125,10 @@ export default async function DashboardPage() {
   ]);
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
 
       {/* Header de sección */}
-      <section className="border-b border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0a0a0a]">
+      <section className="border-b border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#15171c]">
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="flex items-center gap-5">
@@ -192,7 +192,7 @@ export default async function DashboardPage() {
             ].map((stat: { label: string; value: number; sub: string }) => (
               <div
                 key={stat.label}
-                className="rounded-2xl border border-white/10 bg-[#111111] p-5"
+                className="rounded-2xl border border-white/10 bg-[#22262e] p-5"
               >
                 <p className="text-sm text-zinc-400">{stat.label}</p>
                 <p className="mt-3 text-3xl font-bold">{stat.value}</p>
@@ -214,7 +214,7 @@ export default async function DashboardPage() {
           ].map((stat: { label: string; value: number; color: string }) => (
             <div
               key={stat.label}
-              className="rounded-2xl border border-white/10 bg-[#111111] p-6"
+              className="rounded-2xl border border-white/10 bg-[#22262e] p-6"
             >
               <p className="text-sm text-zinc-400">{stat.label}</p>
               <p className={`mt-3 text-4xl font-bold ${stat.color}`}>
@@ -230,7 +230,7 @@ export default async function DashboardPage() {
         <div className={`grid gap-6 ${isSuperAdmin ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}>
 
           {/* Barras de progreso */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-6">
             <h2 className="text-lg font-semibold">Resumen operativo</h2>
             <div className="mt-6 space-y-4">
               {[
@@ -258,7 +258,7 @@ export default async function DashboardPage() {
 
           {/* Usuarios recientes — solo SUPERADMIN */}
           {isSuperAdmin && (
-            <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
+            <div className="rounded-2xl border border-white/10 bg-[#22262e] p-6">
               <h2 className="text-lg font-semibold">Usuarios recientes</h2>
               <div className="mt-4 space-y-3">
                 {latestUsers.map((u: (typeof latestUsers)[number]) => (
@@ -288,7 +288,7 @@ export default async function DashboardPage() {
 
       {/* Tabla de últimos tickets */}
       <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="rounded-2xl border border-white/10 bg-[#111111]">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e]">
           <div className="flex flex-col gap-2 border-b border-white/10 px-6 py-5 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="text-lg font-semibold">Últimos tickets</h2>

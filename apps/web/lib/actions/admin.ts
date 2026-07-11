@@ -226,6 +226,50 @@ export async function invalidateUserSessions(id: string) {
   revalidatePath("/admin/users");
 }
 
+export async function deleteUser(id: string) {
+  const session = await requireAdmin("SUPERADMIN");
+  const actor = session.user;
+
+  if (id === actor.id) throw new Error("No puedes borrar tu propia cuenta");
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: {
+      _count: {
+        select: { tickets: true, comments: true, ticketActivities: true, attachments: true },
+      },
+    },
+  });
+  if (!user) throw new Error("Usuario no encontrado");
+
+  // Relaciones que impiden el borrado (FK Restrict). Las demás se limpian solas:
+  // tickets asignados / prioridades validadas → null; userClients / permisos → cascade.
+  const blocking =
+    user._count.tickets +
+    user._count.comments +
+    user._count.ticketActivities +
+    user._count.attachments;
+  if (blocking > 0) {
+    throw new Error(
+      "No se puede borrar: el usuario tiene tickets, comentarios o actividad asociada. Desactívalo en su lugar."
+    );
+  }
+
+  await prisma.user.delete({ where: { id } });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "DELETE",
+      entityType: "User",
+      entityId: id,
+      description: `Usuario ${user.email} eliminado permanentemente`,
+      actorId: actor.id,
+    },
+  });
+
+  revalidatePath("/admin/users");
+}
+
 // ── Clients ───────────────────────────────────────────────────────────────────
 
 export async function createClient(formData: FormData) {
@@ -309,6 +353,48 @@ export async function toggleClientActive(id: string) {
       entityType: "ClientCompany",
       entityId: id,
       description: `Cliente "${client.name}" ${!client.isActive ? "activado" : "desactivado"}`,
+      actorId: actor.id,
+    },
+  });
+
+  revalidatePath("/admin/clients");
+}
+
+export async function deleteClient(id: string) {
+  const session = await requireAdmin("SUPERADMIN");
+  const actor = session.user;
+
+  const client = await prisma.clientCompany.findUnique({
+    where: { id },
+    include: { _count: { select: { users: true, tickets: true } } },
+  });
+  if (!client) throw new Error("Cliente no encontrado");
+
+  if (client._count.tickets > 0) {
+    throw new Error(
+      "No se puede borrar: el cliente tiene tickets. Desactívalo en su lugar."
+    );
+  }
+  if (client._count.users > 0) {
+    throw new Error(
+      "No se puede borrar: el cliente tiene usuarios. Reasígnalos o bórralos primero."
+    );
+  }
+
+  // Borrar el logo del disco si existe (las categorías se eliminan en cascada)
+  if (client.logoUrl) {
+    const storedPath = client.logoUrl.split("?")[0];
+    await fs.unlink(path.join(getAppDir(), "public", storedPath)).catch(() => {});
+  }
+
+  await prisma.clientCompany.delete({ where: { id } });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "DELETE",
+      entityType: "ClientCompany",
+      entityId: id,
+      description: `Cliente "${client.name}" eliminado permanentemente`,
       actorId: actor.id,
     },
   });

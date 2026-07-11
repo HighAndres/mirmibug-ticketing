@@ -18,7 +18,7 @@ export default function ClientFilter({
         const val = e.target.value;
         router.push(val ? `/admin/categories?clientId=${val}` : "/admin/categories");
       }}
-      className="rounded-xl border border-white/10 bg-[#0a0a0a] px-3 py-2 text-sm text-white outline-none focus:border-[#38d84e]/50"
+      className="rounded-xl border border-white/10 bg-[#15171c] px-3 py-2 text-sm text-white outline-none focus:border-[#38d84e]/50"
     >
       <option value="">Todos los clientes</option>
       {clients.map((c) => (

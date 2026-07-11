@@ -43,7 +43,7 @@ export default function RoleClientSelector({
   }
 
   const inputCls =
-    "w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20";
+    "w-full rounded-xl border border-white/10 bg-[#15171c] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20";
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -79,7 +79,7 @@ export default function RoleClientSelector({
 
           {isMultiClient ? (
             /* Multi-select con checkboxes para AGENT */
-            <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-3 max-h-48 overflow-y-auto space-y-1">
+            <div className="rounded-xl border border-white/10 bg-[#15171c] p-3 max-h-48 overflow-y-auto space-y-1">
               {clients.length === 0 ? (
                 <p className="text-xs text-zinc-600">No hay clientes activos</p>
               ) : (

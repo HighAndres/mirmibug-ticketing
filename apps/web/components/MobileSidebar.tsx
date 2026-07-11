@@ -37,7 +37,7 @@ export function MobileSidebarWrapper({ children }: { children: React.ReactNode }
       {/* Sidebar deslizable desde la derecha en mobile */}
       <aside
         id="mobile-sidebar"
-        className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-white/10 bg-[#0f0f0f] transition-transform duration-300 ease-in-out translate-x-full lg:hidden"
+        className="fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-white/10 bg-[#1c1f26] transition-transform duration-300 ease-in-out translate-x-full lg:hidden"
       >
         {/* Botón de cerrar */}
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">

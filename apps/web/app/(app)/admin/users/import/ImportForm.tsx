@@ -28,7 +28,7 @@ export default function ImportForm({ isSuperAdmin }: { isSuperAdmin: boolean }) 
   );
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const sectionCls = "rounded-2xl border border-white/10 bg-[#111111] p-6";
+  const sectionCls = "rounded-2xl border border-white/10 bg-[#22262e] p-6";
 
   return (
     <div className="space-y-6">

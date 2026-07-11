@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function AppLoading() {
   return (
-    <div className="flex min-h-full items-center justify-center bg-[#0a0a0a]">
+    <div className="flex min-h-full items-center justify-center bg-[#15171c]">
       <div className="flex flex-col items-center gap-4 animate-fade-in">
         {/* Logo animado */}
         <div className="relative">

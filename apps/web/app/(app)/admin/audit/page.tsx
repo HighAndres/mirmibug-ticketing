@@ -54,8 +54,8 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+    <div className="min-h-full bg-[#15171c] text-white">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-2xl font-bold">Auditoría</h1>
           <p className="mt-1 text-sm text-zinc-500">
@@ -65,7 +65,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="rounded-2xl border border-white/10 bg-[#111111] overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-white/5 text-left text-zinc-400">

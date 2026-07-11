@@ -37,8 +37,9 @@ const NAV_ITEMS: NavItem[] = [
 
 // ---------------------------------------------------------------------------
 // Componente de Logout (necesita acción de servidor)
+// `iconOnly` = solo el ícono (para el header); si no, ícono + "Salir".
 // ---------------------------------------------------------------------------
-function LogoutButton() {
+function LogoutButton({ iconOnly = false }: { iconOnly?: boolean }) {
   return (
     <form
       action={async () => {
@@ -48,12 +49,35 @@ function LogoutButton() {
     >
       <button
         type="submit"
-        className="w-full rounded-xl border border-white/10 px-3 py-2 text-left text-sm text-zinc-400 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
+        title="Cerrar sesión"
+        aria-label="Cerrar sesión"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400"
       >
-        Cerrar sesión
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        {!iconOnly && <span>Salir</span>}
       </button>
     </form>
   );
+}
+
+/** Iniciales para el avatar del usuario. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const chars = parts.slice(0, 2).map((w) => w[0]).join("");
+  return chars.toUpperCase() || "U";
 }
 
 // ---------------------------------------------------------------------------
@@ -106,15 +130,28 @@ function SidebarContent({
         )}
       </div>
 
-      {/* Información del usuario */}
+      {/* Información del usuario + Cerrar sesión (arriba, siempre visible) */}
       <div className="border-b border-white/10 px-5 py-4">
-        <p className="text-sm font-medium text-white">{user.name}</p>
-        <p className="text-xs text-zinc-500">{user.email}</p>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="flex items-start gap-3">
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+            style={{
+              backgroundColor: `${primary}22`,
+              color: accent,
+              border: `1px solid ${primary}40`,
+            }}
+          >
+            {initialsOf(user.name)}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">{user.name}</p>
+            <p className="truncate text-xs text-zinc-500">{user.email}</p>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
           <span
             className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
             style={{
-              borderColor: `${primary}4d`,
               backgroundColor: `${primary}1a`,
               color: accent,
               border: `1px solid ${primary}4d`,
@@ -122,9 +159,10 @@ function SidebarContent({
           >
             {user.roleName}
           </span>
+          <LogoutButton />
         </div>
         {user.clientName && (
-          <p className="mt-1 text-xs text-zinc-600">{user.clientName}</p>
+          <p className="mt-2 truncate text-xs text-zinc-600">{user.clientName}</p>
         )}
       </div>
 
@@ -143,11 +181,6 @@ function SidebarContent({
           ))}
         </ul>
       </nav>
-
-      {/* Logout */}
-      <div className="border-t border-white/10 px-3 py-4">
-        <LogoutButton />
-      </div>
     </>
   );
 }
@@ -205,11 +238,11 @@ export default async function AppLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0a] text-white">
+    <div className="flex min-h-screen bg-[#15171c] text-white">
       <InactivityGuard />
 
       {/* ---- Sidebar Desktop (oculto en mobile) ---- */}
-      <aside className="hidden lg:flex w-64 flex-col border-r border-white/10 bg-[#0f0f0f] shrink-0">
+      <aside className="hidden lg:flex w-64 flex-col border-r border-white/10 bg-[#1c1f26] shrink-0">
         <SidebarContent {...sidebarProps} />
       </aside>
 
@@ -222,7 +255,7 @@ export default async function AppLayout({
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
 
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-white/10 bg-[#0f0f0f] px-4 py-3 lg:px-6">
+        <header className="flex items-center justify-between border-b border-white/10 bg-[#1c1f26] px-4 py-3 lg:px-6">
           {/* Mobile: logo + hamburger */}
           <div className="flex items-center gap-3 lg:hidden">
             <Image
@@ -246,6 +279,10 @@ export default async function AppLayout({
             </span>
             <div className="hidden sm:block h-3 w-px bg-white/10" />
             <span className="hidden sm:inline text-xs text-zinc-400">{user.name}</span>
+            {/* Logout siempre accesible en el header (escritorio) */}
+            <div className="hidden lg:block">
+              <LogoutButton iconOnly />
+            </div>
             <MobileMenuButton />
           </div>
         </header>

@@ -37,9 +37,9 @@ export default async function ClientBrandingPage({
   if (!client) notFound();
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-3xl">
           <div className="flex items-center gap-4 mb-1">
             <Link

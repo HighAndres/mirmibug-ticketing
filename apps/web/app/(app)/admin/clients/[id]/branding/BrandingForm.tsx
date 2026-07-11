@@ -76,7 +76,7 @@ export default function BrandingForm({ client }: { client: Client }) {
   const inputCls =
     "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20";
   const labelCls = "block text-sm font-medium text-zinc-400 mb-2";
-  const sectionCls = "rounded-2xl border border-white/10 bg-[#111111] p-6 space-y-5";
+  const sectionCls = "rounded-2xl border border-white/10 bg-[#22262e] p-6 space-y-5";
 
   return (
     <form onSubmit={handleSubmit} encType="multipart/form-data" className="space-y-6">
@@ -103,7 +103,7 @@ export default function BrandingForm({ client }: { client: Client }) {
           <label className={labelCls}>Logo del cliente</label>
           <div className="flex items-start gap-6">
             {/* Preview box */}
-            <div className="flex h-24 w-40 items-center justify-center rounded-xl border border-white/10 bg-[#0a0a0a] overflow-hidden flex-shrink-0">
+            <div className="flex h-24 w-40 items-center justify-center rounded-xl border border-white/10 bg-[#15171c] overflow-hidden flex-shrink-0">
               {logoPreview ? (
                 <img
                   src={logoPreview}
@@ -209,7 +209,7 @@ export default function BrandingForm({ client }: { client: Client }) {
           <label className={labelCls}>Vista previa del sidebar</label>
           <div
             className="rounded-xl p-4 text-sm"
-            style={{ backgroundColor: "#0f0f0f", border: `1px solid ${primaryColor}33` }}
+            style={{ backgroundColor: "#1c1f26", border: `1px solid ${primaryColor}33` }}
           >
             <div className="flex items-center gap-3 mb-3">
               {logoPreview ? (
@@ -337,7 +337,7 @@ export default function BrandingForm({ client }: { client: Client }) {
               id="timezone"
               name="timezone"
               defaultValue={client.timezone ?? "America/Mexico_City"}
-              className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
+              className="w-full rounded-xl border border-white/10 bg-[#15171c] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
             >
               {TIMEZONES.map((tz: (typeof TIMEZONES)[number]) => (
                 <option key={tz} value={tz}>{tz}</option>

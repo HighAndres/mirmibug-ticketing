@@ -170,8 +170,8 @@ export default async function ReportsPage() {
   const maxAssigneeCount = byAssignee[0]?.count ?? 1;
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+    <div className="min-h-full bg-[#15171c] text-white">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Reportes</h1>
@@ -190,7 +190,7 @@ export default async function ReportsPage() {
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {kpis.map((kpi: (typeof kpis)[number]) => (
-            <div key={kpi.label} className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+            <div key={kpi.label} className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
               <p className="text-xs text-zinc-500 uppercase tracking-wide leading-tight">{kpi.label}</p>
               <p className={`mt-2 text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
               {kpi.sub && (
@@ -206,7 +206,7 @@ export default async function ReportsPage() {
         <div className="grid gap-6 lg:grid-cols-2">
 
           {/* By status */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Tickets por estado</h2>
             {byStatus.length === 0 ? (
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
@@ -246,7 +246,7 @@ export default async function ReportsPage() {
           </div>
 
           {/* By priority */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Tickets por prioridad</h2>
             {byPriority.length === 0 ? (
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
@@ -290,7 +290,7 @@ export default async function ReportsPage() {
         <div className="grid gap-6 lg:grid-cols-2">
 
           {/* By category */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-300 mb-4">Tickets por categoría</h2>
             {byCategory.length === 0 ? (
               <p className="text-sm text-zinc-600 italic">Sin datos</p>
@@ -320,7 +320,7 @@ export default async function ReportsPage() {
           </div>
 
           {/* By assignee */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-zinc-300">Tickets por agente</h2>
               {unassignedTickets > 0 && (

@@ -91,10 +91,10 @@ export default async function CompanyAuditPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
 
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-2xl font-bold">Actividad</h1>
           <p className="mt-1 text-sm text-zinc-500">
@@ -105,13 +105,13 @@ export default async function CompanyAuditPage({ searchParams }: PageProps) {
       </section>
 
       {/* Filtros */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-3">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-3">
         <div className="mx-auto max-w-7xl">
           <form method="GET" className="flex flex-wrap items-center gap-3">
             <select
               name="actor"
               defaultValue={actorFilter ?? ""}
-              className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+              className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="">Todos los miembros</option>
               {teamMembers.map((m: (typeof teamMembers)[number]) => (
@@ -144,7 +144,7 @@ export default async function CompanyAuditPage({ searchParams }: PageProps) {
 
       {/* Table */}
       <section className="mx-auto max-w-7xl px-6 py-6">
-        <div className="rounded-2xl border border-white/10 bg-[#111111] overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-white/5 text-left text-zinc-400">

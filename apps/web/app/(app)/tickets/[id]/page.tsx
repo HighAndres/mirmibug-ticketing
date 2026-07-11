@@ -135,10 +135,10 @@ export default async function TicketDetailPage({ params }: PageProps) {
   ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
+    <div className="min-h-full bg-[#15171c] text-white">
 
       {/* Header */}
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-5">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-5">
         <div className="mx-auto max-w-6xl flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
             <Link
@@ -193,7 +193,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
                 key={`status-${ticket.status}`}
                 name="newStatus"
                 defaultValue=""
-                className="rounded-xl border border-white/10 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+                className="rounded-xl border border-white/10 bg-[#15171c] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
               >
                 <option value="" disabled>Cambiar estatus...</option>
                 {allowedTransitions.map((s: (typeof allowedTransitions)[number]) => (
@@ -220,7 +220,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Descripción */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-3">
               Descripción
             </h2>
@@ -230,7 +230,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
           </div>
 
           {/* Archivos adjuntos */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5 space-y-3">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5 space-y-3">
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
               Adjuntos ({ticket.attachments.length})
             </h2>
@@ -241,7 +241,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
           </div>
 
           {/* Timeline: actividad + comentarios */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111]">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e]">
             <div className="border-b border-white/10 px-5 py-4">
               <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide">
                 Actividad ({timeline.length})
@@ -399,7 +399,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
         <aside className="space-y-4">
 
           {/* Info del ticket */}
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5 space-y-4">
             <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
               Detalles
             </h2>
@@ -456,7 +456,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
           {/* Prioridad */}
           {canManage && (
-            <div className="rounded-2xl border border-white/10 bg-[#111111] p-5 space-y-3">
+            <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5 space-y-3">
               <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
                 Prioridad
               </h2>
@@ -490,7 +490,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
                   key={`priority-${ticket.priority}`}
                   name="priority"
                   defaultValue={ticket.priority}
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
+                  className="w-full rounded-xl border border-white/10 bg-[#15171c] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
                 >
                   <option value="LOW">Baja</option>
                   <option value="MEDIUM">Media</option>
@@ -521,7 +521,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
           {/* Asignación */}
           {canManage && (
-            <div className="rounded-2xl border border-white/10 bg-[#111111] p-5 space-y-3">
+            <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5 space-y-3">
               <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
                 Asignado a
               </h2>
@@ -539,7 +539,7 @@ export default async function TicketDetailPage({ params }: PageProps) {
                   key={`assignee-${ticket.assigneeId ?? "none"}`}
                   name="assigneeId"
                   defaultValue={ticket.assigneeId ?? ""}
-                  className="w-full rounded-xl border border-white/10 bg-[#0a0a0a] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
+                  className="w-full rounded-xl border border-white/10 bg-[#15171c] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
                 >
                   <option value="">Sin asignar</option>
                   {agents.map((a: (typeof agents)[number]) => (

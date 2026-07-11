@@ -2,7 +2,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { toggleClientActive } from "@/lib/actions/admin";
+import { toggleClientActive, deleteClient } from "@/lib/actions/admin";
+import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 
 export const metadata = { title: "Clientes" };
 
@@ -80,8 +81,8 @@ export default async function ClientsPage({ searchParams }: PageProps) {
   const hasFilters = !!(search || statusFilter);
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+    <div className="min-h-full bg-[#15171c] text-white">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Clientes</h1>
@@ -102,22 +103,22 @@ export default async function ClientsPage({ searchParams }: PageProps) {
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Total clientes</p>
             <p className="mt-2 text-3xl font-bold text-white">{totalClients}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Activos</p>
             <p className="mt-2 text-3xl font-bold text-emerald-400">{activeClients}</p>
             {inactiveClients > 0 && (
               <p className="mt-1 text-xs text-red-400">{inactiveClients} inactivo{inactiveClients !== 1 ? "s" : ""}</p>
             )}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Total usuarios</p>
             <p className="mt-2 text-3xl font-bold text-sky-400">{totalUsers}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5">
             <p className="text-xs text-zinc-500 uppercase tracking-wide">Total tickets</p>
             <p className="mt-2 text-3xl font-bold text-amber-400">{totalTickets}</p>
           </div>
@@ -135,7 +136,7 @@ export default async function ClientsPage({ searchParams }: PageProps) {
             <select
               name="status"
               defaultValue={statusFilter ?? ""}
-              className="rounded-xl border border-white/10 bg-[#111111] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
+              className="rounded-xl border border-white/10 bg-[#22262e] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50"
             >
               <option value="">Todos los estados</option>
               <option value="active">Activos</option>
@@ -159,7 +160,7 @@ export default async function ClientsPage({ searchParams }: PageProps) {
         </div>
 
         {/* Client table */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-white/5 text-left text-zinc-400">
@@ -287,6 +288,15 @@ export default async function ClientsPage({ searchParams }: PageProps) {
                                 {c.isActive ? "Desactivar" : "Activar"}
                               </button>
                             </form>
+                            <ConfirmDeleteButton
+                              action={deleteClient.bind(null, c.id)}
+                              confirmMessage={`¿Borrar permanentemente el cliente "${c.name}"? Se eliminarán también sus categorías. Esta acción no se puede deshacer.`}
+                              disabledReason={
+                                c._count.users === 0 && c._count.tickets === 0
+                                  ? undefined
+                                  : "No se puede borrar: tiene usuarios o tickets. Desactívalo en su lugar."
+                              }
+                            />
                           </div>
                         </td>
                       </tr>

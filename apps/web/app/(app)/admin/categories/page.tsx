@@ -59,8 +59,8 @@ export default async function CategoriesPage({
   ]);
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <section className="border-b border-white/10 bg-[#0f0f0f] px-6 py-6">
+    <div className="min-h-full bg-[#15171c] text-white">
+      <section className="border-b border-white/10 bg-[#1c1f26] px-6 py-6">
         <div className="mx-auto max-w-7xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Categorías</h1>
@@ -87,14 +87,14 @@ export default async function CategoriesPage({
 
       <section className="mx-auto max-w-7xl px-6 py-6 space-y-4">
         {categories.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-[#111111] px-5 py-12 text-center text-zinc-500">
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] px-5 py-12 text-center text-zinc-500">
             No hay categorías registradas.
           </div>
         ) : (
           categories.map((cat: (typeof categories)[number]) => (
             <div
               key={cat.id}
-              className="rounded-2xl border border-white/10 bg-[#111111] overflow-hidden"
+              className="rounded-2xl border border-white/10 bg-[#22262e] overflow-hidden"
             >
               {/* Header de categoría */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">

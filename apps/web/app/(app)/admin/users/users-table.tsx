@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { invalidateUserSessions, toggleUserActive } from "@/lib/actions/admin";
+import { invalidateUserSessions, toggleUserActive, deleteUser } from "@/lib/actions/admin";
+import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
 
 type UserRow = {
   id: string;
@@ -14,6 +15,7 @@ type UserRow = {
   clientName: string | null;
   clientId: string | null;
   ticketCount: number;
+  deletable: boolean;
   assignedClientNames: string[];
 };
 
@@ -158,7 +160,7 @@ export default function UsersTable({
 
       {/* Table */}
       <div className="mx-auto max-w-7xl px-6 pb-6">
-        <div className="rounded-2xl border border-white/10 bg-[#111111] overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-[#22262e] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-white/5 text-left text-zinc-400">
@@ -256,6 +258,17 @@ export default function UsersTable({
                                     Cerrar sesión
                                   </button>
                                 </form>
+                              )}
+                              {isSuperAdmin && (
+                                <ConfirmDeleteButton
+                                  action={deleteUser.bind(null, u.id)}
+                                  confirmMessage={`¿Borrar permanentemente a "${u.name}" (${u.email})? Esta acción no se puede deshacer.`}
+                                  disabledReason={
+                                    u.deletable
+                                      ? undefined
+                                      : "No se puede borrar: tiene tickets, comentarios o actividad. Desactívalo en su lugar."
+                                  }
+                                />
                               )}
                             </>
                           )}
