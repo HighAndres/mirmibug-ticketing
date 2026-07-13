@@ -13,7 +13,7 @@ export default async function EditClientPage({
 }) {
   const { id } = await params;
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
   const client = await prisma.clientCompany.findUnique({ where: { id } });

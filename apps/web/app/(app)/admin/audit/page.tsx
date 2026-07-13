@@ -33,7 +33,7 @@ type PageProps = { searchParams: Promise<{ page?: string }> };
 
 export default async function AuditPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
   const params = await searchParams;

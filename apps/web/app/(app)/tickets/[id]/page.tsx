@@ -50,7 +50,7 @@ function getAllowedTransitions(
 
 export default async function TicketDetailPage({ params }: PageProps) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   const { id } = await params;

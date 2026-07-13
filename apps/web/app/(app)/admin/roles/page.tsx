@@ -6,7 +6,7 @@ export const metadata = { title: "Roles y permisos" };
 
 export default async function RolesPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
   const roles = await prisma.role.findMany({

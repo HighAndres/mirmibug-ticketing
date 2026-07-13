@@ -15,7 +15,7 @@ export default async function EditUserPage({
 }) {
   const { id } = await params;
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user: actor } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(actor.roleKey)) redirect("/dashboard");

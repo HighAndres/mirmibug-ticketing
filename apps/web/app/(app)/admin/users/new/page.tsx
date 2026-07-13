@@ -10,7 +10,7 @@ export const metadata = { title: "Nuevo usuario" };
 
 export default async function NewUserPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");

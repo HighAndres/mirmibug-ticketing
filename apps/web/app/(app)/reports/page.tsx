@@ -9,7 +9,7 @@ export const metadata = { title: "Reportes" };
 
 export default async function ReportsPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN", "AGENT", "CLIENT_SUPERVISOR"].includes(user.roleKey)) {

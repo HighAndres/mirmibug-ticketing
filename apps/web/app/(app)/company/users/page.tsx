@@ -6,7 +6,7 @@ export const metadata = { title: "Equipo" };
 
 export default async function CompanyUsersPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
 

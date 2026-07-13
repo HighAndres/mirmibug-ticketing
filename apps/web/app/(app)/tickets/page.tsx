@@ -38,7 +38,7 @@ export const metadata = { title: "Tickets" };
 
 export default async function TicketsPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   const params = await searchParams;

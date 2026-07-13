@@ -15,7 +15,7 @@ import { getPublicPath, getAppDir } from "@/lib/uploads";
 
 async function requireAdmin(minRole?: "SUPERADMIN") {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   const { user } = session;
   if (minRole === "SUPERADMIN" && user.roleKey !== "SUPERADMIN") {
     throw new Error("Solo el Superadmin puede realizar esta acción");
@@ -28,7 +28,7 @@ async function requireAdmin(minRole?: "SUPERADMIN") {
 
 async function requireAuth() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   return session;
 }
 
@@ -106,7 +106,10 @@ export async function updateUser(id: string, formData: FormData) {
   const roleId = formData.get("roleId") as string;
   const rawClientId = formData.get("clientId") as string;
   const clientIds = formData.getAll("clientIds") as string[];
-  const isActive = formData.get("isActive") === "on";
+  // El checkbox "Usuario activo" NO se muestra al editar la propia cuenta,
+  // así que el campo no llega en el form. Si es la propia cuenta, conservar
+  // el estado actual (nunca desactivarse a sí mismo desde este formulario).
+  const isActive = id === actor.id ? existing.isActive : formData.get("isActive") === "on";
 
   // Validar que el actor puede asignar este rol (anti escalación)
   await validateRoleAssignment(roleId, actor.roleKey, prisma);

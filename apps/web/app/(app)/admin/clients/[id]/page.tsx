@@ -24,7 +24,7 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
   if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
   const { id } = await params;

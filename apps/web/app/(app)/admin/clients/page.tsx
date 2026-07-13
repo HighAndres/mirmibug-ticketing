@@ -13,7 +13,7 @@ type PageProps = {
 
 export default async function ClientsPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   if (user.roleKey !== "SUPERADMIN") redirect("/dashboard");

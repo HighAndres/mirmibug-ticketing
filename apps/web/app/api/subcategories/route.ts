@@ -5,7 +5,7 @@ import { getUserClientIds } from "@/lib/permissions";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session) return NextResponse.json([], { status: 401 });
+  if (!session?.user) return NextResponse.json([], { status: 401 });
 
   const categoryId = req.nextUrl.searchParams.get("categoryId");
   if (!categoryId) return NextResponse.json([]);

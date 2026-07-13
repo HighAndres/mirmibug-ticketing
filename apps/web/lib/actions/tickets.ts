@@ -18,7 +18,7 @@ import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenant,
 // ---------------------------------------------------------------------------
 export async function createTicket(formData: FormData) {
   const session = await auth();
-  if (!session) throw new Error("No autenticado");
+  if (!session?.user) throw new Error("No autenticado");
 
   const { user } = session;
 
@@ -120,7 +120,7 @@ export async function createTicket(formData: FormData) {
 // ---------------------------------------------------------------------------
 export async function changeTicketStatus(ticketId: string, status: string) {
   const session = await auth();
-  if (!session) throw new Error("No autenticado");
+  if (!session?.user) throw new Error("No autenticado");
 
   const { user } = session;
 
@@ -209,7 +209,7 @@ export async function changeTicketStatus(ticketId: string, status: string) {
 // ---------------------------------------------------------------------------
 export async function assignTicket(ticketId: string, assigneeId: string | null) {
   const session = await auth();
-  if (!session) throw new Error("No autenticado");
+  if (!session?.user) throw new Error("No autenticado");
 
   const { user } = session;
 
@@ -335,7 +335,7 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
 // ---------------------------------------------------------------------------
 export async function changeTicketPriority(ticketId: string, newPriority: string) {
   const session = await auth();
-  if (!session) throw new Error("No autenticado");
+  if (!session?.user) throw new Error("No autenticado");
 
   const { user } = session;
 
@@ -403,7 +403,7 @@ export async function changeTicketPriority(ticketId: string, newPriority: string
 // ---------------------------------------------------------------------------
 export async function validateTicketPriority(ticketId: string) {
   const session = await auth();
-  if (!session) throw new Error("No autenticado");
+  if (!session?.user) throw new Error("No autenticado");
 
   const { user } = session;
 
@@ -462,7 +462,7 @@ export async function validateTicketPriority(ticketId: string) {
 // ---------------------------------------------------------------------------
 export async function addComment(formData: FormData) {
   const session = await auth();
-  if (!session) throw new Error("No autenticado");
+  if (!session?.user) throw new Error("No autenticado");
 
   const { user } = session;
 

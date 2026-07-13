@@ -7,7 +7,7 @@ export const metadata = { title: "Importar usuarios" };
 
 export default async function ImportUsersPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");

@@ -15,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 

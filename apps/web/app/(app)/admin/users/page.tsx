@@ -8,7 +8,7 @@ export const metadata = { title: "Usuarios" };
 
 export default async function UsersPage() {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
   if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");

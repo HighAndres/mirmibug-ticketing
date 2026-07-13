@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 

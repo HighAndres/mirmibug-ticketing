@@ -35,7 +35,7 @@ type PageProps = {
 
 export default async function CompanyAuditPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session?.user) redirect("/login");
 
   const { user } = session;
 
