@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Clientes",       href: "/admin/clients",       roles: ["SUPERADMIN"] },
   { label: "Categorías",     href: "/admin/categories",    roles: ["SUPERADMIN", "CLIENT_ADMIN"] },
   { label: "Roles y permisos", href: "/admin/roles",       roles: ["SUPERADMIN"] },
+  { label: "Configuración",  href: "/admin/settings",      roles: ["SUPERADMIN"] },
 
   // Vista de empresa (CLIENT_SUPERVISOR)
   { label: "Equipo",         href: "/company/users",       roles: ["CLIENT_SUPERVISOR"] },

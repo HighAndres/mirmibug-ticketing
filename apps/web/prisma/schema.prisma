@@ -288,6 +288,30 @@ model TicketCollaborator {
   @@unique([ticketId, userId])
 }
 
+// Configuración global de correo (fila única, id = "singleton").
+// La contraseña SMTP se guarda cifrada (AES-256-GCM) en smtpPass.
+model EmailSettings {
+  id         String  @id
+  enabled    Boolean @default(false) // interruptor maestro de notificaciones por correo
+
+  smtpHost   String?
+  smtpPort   Int?    @default(587)
+  smtpUser   String?
+  smtpPass   String? // cifrada (AES-256-GCM); nunca se expone en texto plano al cliente
+  smtpFrom   String?
+  smtpSecure Boolean @default(false)
+
+  // Toggles por tipo de notificación
+  onTicketCreated     Boolean @default(true)
+  onTicketAssigned    Boolean @default(true)
+  onStatusChanged     Boolean @default(true)
+  onNewComment        Boolean @default(true)
+  onCollaboratorAdded Boolean @default(true)
+
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+}
+
 model AuditLog {
   id            String       @id @default(cuid())
   action        AuditAction
