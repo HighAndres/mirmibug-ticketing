@@ -87,19 +87,24 @@ export async function getUserClientIds(userId: string, roleKey: RoleKey, clientI
  * - CLIENT_ADMIN / CLIENT_SUPERVISOR: mismo clientId directo
  * - AGENT: mismo clientId directo O a través de userClients
  * - CLIENT_USER: mismo clientId Y debe ser el solicitante (requesterId)
+ *   O estar registrado como colaborador del ticket
  *
  * Para AGENT con múltiples clientes, pasar agentClientIds precargados.
+ * Para permitir acceso a colaboradores, pasar collaboratorIds precargados.
  */
 export function canAccessTicket(
   user: SessionUser,
   ticket: TicketMinimal,
   agentClientIds?: string[],
+  collaboratorIds?: string[],
 ): boolean {
   if (user.roleKey === "SUPERADMIN") return true;
 
-  // CLIENT_USER: mismo tenant Y debe ser el solicitante
+  const isCollaborator = collaboratorIds?.includes(user.id) ?? false;
+
+  // CLIENT_USER: mismo tenant Y (es el solicitante O es colaborador)
   if (user.roleKey === "CLIENT_USER") {
-    return user.clientId === ticket.clientId && ticket.requesterId === user.id;
+    return user.clientId === ticket.clientId && (ticket.requesterId === user.id || isCollaborator);
   }
 
   // Roles de gestión: mismo clientId directo
@@ -108,6 +113,9 @@ export function canAccessTicket(
   // AGENT multi-cliente: verificar via tabla de asignaciones
   if (user.roleKey === "AGENT" && agentClientIds?.includes(ticket.clientId)) return true;
 
+  // Colaborador explícito de otro rol (p. ej. supervisor de otro tenant agregado a mano)
+  if (isCollaborator && user.clientId === ticket.clientId) return true;
+
   return false;
 }
 
@@ -115,8 +123,23 @@ export function canAccessTicket(
  * ¿El usuario puede modificar un ticket? (cambiar estatus, comentar, etc.)
  * Misma lógica que canAccessTicket: si no puedes verlo, no puedes tocarlo.
  */
-export function canModifyTicket(user: SessionUser, ticket: TicketMinimal, agentClientIds?: string[]): boolean {
-  return canAccessTicket(user, ticket, agentClientIds);
+export function canModifyTicket(user: SessionUser, ticket: TicketMinimal, agentClientIds?: string[], collaboratorIds?: string[]): boolean {
+  return canAccessTicket(user, ticket, agentClientIds, collaboratorIds);
+}
+
+/**
+ * ¿El usuario puede gestionar (agregar/quitar) colaboradores de un ticket?
+ * - Roles de gestión del tenant (canManageTickets + mismo tenant)
+ * - El solicitante del ticket
+ */
+export function canManageCollaborators(
+  user: SessionUser,
+  ticket: TicketMinimal,
+  agentClientIds?: string[],
+): boolean {
+  if (ticket.requesterId === user.id) return true;
+  if (!canManageTickets(user.roleKey)) return false;
+  return isSameTenant(user, ticket.clientId, agentClientIds);
 }
 
 /**

@@ -261,3 +261,93 @@ export async function notifyNewComment(
     );
   }
 }
+
+// ── Colaboradores ─────────────────────────────────────────────────────────────
+
+type Recipient = { email: string; name: string };
+
+/** Colaborador agregado → le avisa que ahora sigue el ticket */
+export async function notifyCollaboratorAdded(
+  collaborator: Recipient,
+  ticket: TicketBasic,
+  addedByName: string
+) {
+  const url = `${APP_URL}/tickets/${ticket.id}`;
+  const body = `
+    <p style="margin:0 0 16px;font-size:14px;color:#3f3f46">
+      Hola <strong>${collaborator.name}</strong>, <strong>${addedByName}</strong> te agregó como colaborador del ticket <strong>${ticket.folio}</strong>. A partir de ahora recibirás sus actualizaciones.
+    </p>
+    <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin-bottom:16px">
+      ${field("Folio", `<strong>${ticket.folio}</strong>`)}
+      ${field("Título", ticket.title)}
+      ${field("Estado", badge(STATUS_ES[ticket.status] ?? ticket.status, STATUS_COLOR[ticket.status]))}
+    </div>`;
+
+  await sendMail(
+    collaborator.email,
+    `[${ticket.folio}] Fuiste agregado como colaborador`,
+    template(`Colaboras en ${ticket.folio}`, body, "Ver ticket", url)
+  );
+}
+
+/** Cambio de estado → avisa a la lista de colaboradores */
+export async function notifyCollaboratorsStatusChanged(
+  ticket: TicketBasic,
+  previousStatus: string,
+  collaborators: Recipient[]
+) {
+  if (collaborators.length === 0) return;
+  const url = `${APP_URL}/tickets/${ticket.id}`;
+  const prevLabel = STATUS_ES[previousStatus] ?? previousStatus;
+  const newLabel = STATUS_ES[ticket.status] ?? ticket.status;
+
+  const makeBody = (name: string) => `
+    <p style="margin:0 0 16px;font-size:14px;color:#3f3f46">
+      Hola <strong>${name}</strong>, el estado del ticket <strong>${ticket.folio}</strong> que sigues ha cambiado.
+    </p>
+    <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin-bottom:16px">
+      ${field("Folio", `<strong>${ticket.folio}</strong>`)}
+      ${field("Título", ticket.title)}
+      ${field("Estado anterior", badge(prevLabel, STATUS_COLOR[previousStatus] ?? "#71717a"))}
+      ${field("Nuevo estado", badge(newLabel, STATUS_COLOR[ticket.status] ?? "#71717a"))}
+    </div>`;
+
+  for (const c of collaborators) {
+    await sendMail(
+      c.email,
+      `[${ticket.folio}] Estado actualizado a "${newLabel}"`,
+      template(`Estado: ${newLabel}`, makeBody(c.name), "Ver ticket", url)
+    );
+  }
+}
+
+/** Nuevo comentario público → avisa a la lista de colaboradores */
+export async function notifyCollaboratorsNewComment(
+  ticket: TicketBasic,
+  commentPreview: string,
+  collaborators: Recipient[]
+) {
+  if (collaborators.length === 0) return;
+  const url = `${APP_URL}/tickets/${ticket.id}`;
+  const preview = commentPreview.length > 200 ? commentPreview.slice(0, 200) + "…" : commentPreview;
+
+  const makeBody = (name: string) => `
+    <p style="margin:0 0 16px;font-size:14px;color:#3f3f46">
+      Hola <strong>${name}</strong>, hay un nuevo comentario en el ticket <strong>${ticket.folio}</strong> que sigues.
+    </p>
+    <div style="background:#fafafa;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin-bottom:16px">
+      ${field("Folio", `<strong>${ticket.folio}</strong>`)}
+      ${field("Título", ticket.title)}
+      <div style="margin-top:10px;padding:10px;background:#f0fdf4;border-left:3px solid #38d84e;border-radius:4px;font-size:13px;color:#3f3f46">
+        ${preview}
+      </div>
+    </div>`;
+
+  for (const c of collaborators) {
+    await sendMail(
+      c.email,
+      `[${ticket.folio}] Nuevo comentario`,
+      template("Nuevo comentario", makeBody(c.name), "Ver ticket", url)
+    );
+  }
+}

@@ -14,8 +14,10 @@ import {
   addComment,
   changeTicketPriority,
   validateTicketPriority,
+  addCollaborator,
+  removeCollaborator,
 } from "@/lib/actions/tickets";
-import { canAccessTicket, canManageTickets, getUserClientIds } from "@/lib/permissions";
+import { canAccessTicket, canManageTickets, canManageCollaborators, getUserClientIds } from "@/lib/permissions";
 import FileUpload, { AttachmentList } from "./file-upload";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -81,20 +83,48 @@ export default async function TicketDetailPage({ params }: PageProps) {
           uploadedBy: { select: { name: true } },
         },
       },
+      collaborators: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          user: { include: { role: { select: { name: true } } } },
+        },
+      },
     },
   });
 
   if (!ticket) notFound();
 
-  // Autorización: multitenencia + CLIENT_USER solo ve sus propios tickets
+  const collaboratorIds = ticket.collaborators.map(
+    (c: (typeof ticket.collaborators)[number]) => c.userId
+  );
+
+  // Autorización: multitenencia + CLIENT_USER solo ve sus propios tickets (o es colaborador)
   const agentClientIds = user.roleKey === "AGENT"
     ? await getUserClientIds(user.id, user.roleKey, user.clientId)
     : [];
-  if (!canAccessTicket(user, ticket, agentClientIds)) {
+  if (!canAccessTicket(user, ticket, agentClientIds, collaboratorIds)) {
     notFound();
   }
 
   const canManage = canManageTickets(user.roleKey);
+  const canManageCollabs = canManageCollaborators(user, ticket, agentClientIds);
+
+  // Usuarios elegibles como colaboradores: mismo cliente + agentes/superadmin con acceso
+  const eligibleCollaborators = canManageCollabs
+    ? await prisma.user.findMany({
+        where: {
+          isActive: true,
+          id: { notIn: [ticket.requesterId, ...collaboratorIds] },
+          OR: [
+            { clientId: ticket.clientId },
+            { role: { key: "SUPERADMIN" } },
+            { role: { key: "AGENT" }, userClients: { some: { clientId: ticket.clientId } } },
+          ],
+        },
+        select: { id: true, name: true, email: true, role: { select: { name: true } } },
+        orderBy: { name: "asc" },
+      })
+    : [];
 
   // Agentes disponibles para asignar (incluye agentes multi-cliente vía UserClient)
   const agents = canManage
@@ -300,6 +330,8 @@ export default async function TicketDetailPage({ params }: PageProps) {
                         {entry.type === "ASSIGNMENT" && "A"}
                         {entry.type === "PRIORITY_VALIDATION" && "V"}
                         {entry.type === "CREATED" && "+"}
+                        {entry.type === "COLLABORATOR_ADDED" && "C"}
+                        {entry.type === "COLLABORATOR_REMOVED" && "C"}
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-zinc-400">
@@ -338,6 +370,12 @@ export default async function TicketDetailPage({ params }: PageProps) {
                                 {PRIORITY_LABELS[entry.newValue ?? ""] ?? entry.newValue}
                               </span>
                             </>
+                          )}
+                          {entry.type === "COLLABORATOR_ADDED" && (
+                            <>{" "}agregó a <span className="text-zinc-300 font-medium">{entry.newValue}</span> como colaborador</>
+                          )}
+                          {entry.type === "COLLABORATOR_REMOVED" && (
+                            <>{" "}quitó a <span className="text-zinc-300 font-medium">{entry.oldValue}</span> de los colaboradores</>
                           )}
                         </p>
                       </div>
@@ -557,6 +595,84 @@ export default async function TicketDetailPage({ params }: PageProps) {
               </form>
             </div>
           )}
+
+          {/* Colaboradores */}
+          <div className="rounded-2xl border border-white/10 bg-[#22262e] p-5 space-y-3">
+            <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+              Colaboradores ({ticket.collaborators.length})
+            </h2>
+            <p className="text-[11px] text-zinc-600 -mt-1">
+              Siguen el ticket y reciben sus actualizaciones por correo.
+            </p>
+
+            {ticket.collaborators.length === 0 ? (
+              <p className="text-sm italic text-zinc-600">Sin colaboradores.</p>
+            ) : (
+              <ul className="space-y-2">
+                {ticket.collaborators.map((c: (typeof ticket.collaborators)[number]) => (
+                  <li key={c.id} className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/5 border border-white/10 text-[10px] font-semibold text-zinc-300 shrink-0">
+                      {c.user.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-sm text-zinc-300 flex-1 min-w-0 truncate">
+                      {c.user.name}
+                      <span className="ml-1 text-xs text-zinc-600">
+                        ({c.user.role?.name ?? ""})
+                      </span>
+                    </span>
+                    {canManageCollabs && (
+                      <form action={async () => {
+                        "use server";
+                        await removeCollaborator(ticket.id, c.userId);
+                      }}>
+                        <button
+                          type="submit"
+                          title="Quitar colaborador"
+                          className="text-xs text-zinc-500 hover:text-red-400 transition px-1"
+                        >
+                          ✕
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {canManageCollabs && eligibleCollaborators.length > 0 && (
+              <form
+                action={async (fd: FormData) => {
+                  "use server";
+                  const uid = fd.get("userId") as string;
+                  if (uid) await addCollaborator(ticket.id, uid);
+                }}
+                className="pt-1"
+              >
+                <label className="block text-xs text-zinc-500 mb-1">Agregar colaborador</label>
+                <select
+                  name="userId"
+                  defaultValue=""
+                  className="w-full rounded-xl border border-white/10 bg-[#15171c] px-3 py-2 text-sm text-zinc-300 outline-none focus:border-[#38d84e]/50 mb-2"
+                >
+                  <option value="" disabled>Selecciona un usuario...</option>
+                  {eligibleCollaborators.map((u: (typeof eligibleCollaborators)[number]) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} — {u.role?.name ?? ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-white/10 py-2 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
+                >
+                  Agregar
+                </button>
+              </form>
+            )}
+            {canManageCollabs && eligibleCollaborators.length === 0 && (
+              <p className="text-xs text-zinc-600">No hay más usuarios elegibles para agregar.</p>
+            )}
+          </div>
         </aside>
       </div>
     </div>

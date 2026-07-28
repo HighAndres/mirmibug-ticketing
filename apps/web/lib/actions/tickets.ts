@@ -8,10 +8,13 @@ import {
   notifyTicketAssigned,
   notifyStatusChanged,
   notifyNewComment,
+  notifyCollaboratorAdded,
+  notifyCollaboratorsStatusChanged,
+  notifyCollaboratorsNewComment,
 } from "@/lib/mailer";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canModifyTicket, canManageTickets, canWriteInternalNotes, isSameTenant, isSameTenantAsync, getUserClientIds } from "@/lib/permissions";
+import { canModifyTicket, canManageTickets, canManageCollaborators, canWriteInternalNotes, isSameTenant, isSameTenantAsync, getUserClientIds } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Crear ticket
@@ -135,6 +138,7 @@ export async function changeTicketStatus(ticketId: string, status: string) {
       requesterId: true,
       requester: { select: { id: true, email: true, name: true } },
       assignee: { select: { id: true, email: true, name: true } },
+      collaborators: { select: { user: { select: { id: true, email: true, name: true } } } },
     },
   });
 
@@ -198,6 +202,19 @@ export async function changeTicketStatus(ticketId: string, status: string) {
     ticket.requester.name,
     ticket.assignee?.email,
     ticket.assignee?.name
+  ).catch(console.error);
+
+  // Email: notificar a colaboradores (excluye solicitante/asignado ya notificados y a quien hizo el cambio)
+  const alreadyNotified = new Set(
+    [ticket.requester.id, ticket.assignee?.id, user.id].filter(Boolean) as string[]
+  );
+  const statusFollowers = ticket.collaborators
+    .map((c) => c.user)
+    .filter((u) => !alreadyNotified.has(u.id));
+  notifyCollaboratorsStatusChanged(
+    { id: ticketId, folio: ticket.folio, title: ticket.title, status, priority: ticket.priority },
+    previousStatus,
+    statusFollowers
   ).catch(console.error);
 
   revalidatePath(`/tickets/${ticketId}`);
@@ -489,18 +506,21 @@ export async function addComment(formData: FormData) {
       priority: true,
       requester: { select: { id: true, email: true, name: true } },
       assignee: { select: { id: true, email: true, name: true } },
+      collaborators: { select: { user: { select: { id: true, email: true, name: true } } } },
     },
   });
 
   if (!ticket) throw new Error("Ticket no encontrado");
 
-  // Autorización: verificar acceso multi-tenant
+  const collaboratorIds = ticket.collaborators.map((c) => c.user.id);
+
+  // Autorización: verificar acceso multi-tenant (o ser colaborador)
   if (user.roleKey === "AGENT") {
     const agentClientIds = await getUserClientIds(user.id, user.roleKey, user.clientId);
-    if (!canModifyTicket(user, ticket, agentClientIds)) {
+    if (!canModifyTicket(user, ticket, agentClientIds, collaboratorIds)) {
       throw new Error("Sin permisos para este ticket");
     }
-  } else if (!canModifyTicket(user, ticket)) {
+  } else if (!canModifyTicket(user, ticket, undefined, collaboratorIds)) {
     throw new Error("Sin permisos para este ticket");
   }
 
@@ -526,7 +546,174 @@ export async function addComment(formData: FormData) {
       ticket.assignee?.name,
       ticket.assignee?.id
     ).catch(console.error);
+
+    // Email: notificar a colaboradores (excluye solicitante/asignado y al autor del comentario)
+    const notified = new Set(
+      [ticket.requester.id, ticket.assignee?.id, user.id].filter(Boolean) as string[]
+    );
+    const commentFollowers = ticket.collaborators
+      .map((c) => c.user)
+      .filter((u) => !notified.has(u.id));
+    notifyCollaboratorsNewComment(
+      { id: ticketId, folio: ticket.folio, title: ticket.title, status: ticket.status, priority: ticket.priority },
+      content.trim(),
+      commentFollowers
+    ).catch(console.error);
   }
+
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Colaboradores
+// ---------------------------------------------------------------------------
+
+/** ¿El candidato es elegible como colaborador del ticket? (mismo cliente o agente/superadmin con acceso al tenant) */
+function isEligibleCollaborator(
+  candidate: { isActive: boolean; clientId: string | null; role: { key: string }; userClients: { clientId: string }[] },
+  ticketClientId: string
+): boolean {
+  if (!candidate.isActive) return false;
+  if (candidate.clientId === ticketClientId) return true;
+  if (candidate.role.key === "SUPERADMIN") return true;
+  if (candidate.role.key === "AGENT" && candidate.userClients.some((uc) => uc.clientId === ticketClientId)) return true;
+  return false;
+}
+
+export async function addCollaborator(ticketId: string, userId: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autenticado");
+  const { user } = session;
+
+  if (!ticketId || !userId) throw new Error("Datos incompletos");
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { id: true, clientId: true, requesterId: true, folio: true, title: true, status: true, priority: true },
+  });
+  if (!ticket) throw new Error("Ticket no encontrado");
+
+  // Autorización: gestores del tenant o el solicitante
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : undefined;
+  if (!canManageCollaborators(user, ticket, agentClientIds)) {
+    throw new Error("Sin permisos para gestionar colaboradores");
+  }
+
+  if (userId === ticket.requesterId) {
+    throw new Error("El solicitante ya sigue el ticket");
+  }
+
+  // El colaborador debe ser un usuario registrado y elegible para el tenant
+  const candidate = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      email: true,
+      name: true,
+      isActive: true,
+      clientId: true,
+      role: { select: { key: true } },
+      userClients: { select: { clientId: true } },
+    },
+  });
+  if (!candidate) throw new Error("Usuario no encontrado");
+  if (!isEligibleCollaborator(candidate, ticket.clientId)) {
+    throw new Error("El usuario no puede ser colaborador de este ticket");
+  }
+
+  // Crear (idempotente ante duplicados por el unique [ticketId, userId])
+  try {
+    await prisma.ticketCollaborator.create({
+      data: { ticketId, userId, addedById: user.id },
+    });
+  } catch (err) {
+    if ((err as { code?: string }).code === "P2002") {
+      return; // ya era colaborador
+    }
+    throw err;
+  }
+
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "Ticket",
+        entityId: ticketId,
+        description: `Colaborador agregado a ${ticket.folio}: ${candidate.name}`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ field: "collaborator", added: userId }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "COLLABORATOR_ADDED",
+        field: "collaborator",
+        newValue: candidate.name,
+        ticketId,
+        actorId: user.id,
+      },
+    }),
+  ]);
+
+  notifyCollaboratorAdded(
+    { email: candidate.email, name: candidate.name },
+    { id: ticketId, folio: ticket.folio, title: ticket.title, status: ticket.status, priority: ticket.priority },
+    user.name ?? "Un gestor"
+  ).catch(console.error);
+
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+export async function removeCollaborator(ticketId: string, userId: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("No autenticado");
+  const { user } = session;
+
+  if (!ticketId || !userId) throw new Error("Datos incompletos");
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { id: true, clientId: true, requesterId: true, folio: true },
+  });
+  if (!ticket) throw new Error("Ticket no encontrado");
+
+  const agentClientIds = user.roleKey === "AGENT"
+    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
+    : undefined;
+  if (!canManageCollaborators(user, ticket, agentClientIds)) {
+    throw new Error("Sin permisos para gestionar colaboradores");
+  }
+
+  const existing = await prisma.ticketCollaborator.findUnique({
+    where: { ticketId_userId: { ticketId, userId } },
+    select: { id: true, user: { select: { name: true } } },
+  });
+  if (!existing) return;
+
+  await prisma.ticketCollaborator.delete({ where: { id: existing.id } });
+
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        action: "UPDATE",
+        entityType: "Ticket",
+        entityId: ticketId,
+        description: `Colaborador removido de ${ticket.folio}: ${existing.user.name}`,
+        actorId: user.id,
+        metadataJson: JSON.stringify({ field: "collaborator", removed: userId }),
+      },
+    }),
+    prisma.ticketActivity.create({
+      data: {
+        type: "COLLABORATOR_REMOVED",
+        field: "collaborator",
+        oldValue: existing.user.name,
+        ticketId,
+        actorId: user.id,
+      },
+    }),
+  ]);
 
   revalidatePath(`/tickets/${ticketId}`);
 }

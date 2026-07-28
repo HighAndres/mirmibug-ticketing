@@ -143,6 +143,8 @@ model User {
   ticketActivities    TicketActivity[] @relation("ActivityActor")
   attachments         Attachment[]     @relation("AttachmentUploader")
   userClients         UserClient[]
+  collaborations      TicketCollaborator[] @relation("CollaboratorUser")
+  addedCollaborations TicketCollaborator[] @relation("CollaboratorAddedBy")
 }
 
 model Category {
@@ -205,9 +207,10 @@ model Ticket {
   clientId     String
   client       ClientCompany  @relation(fields: [clientId], references: [id])
 
-  comments     Comment[]
-  activities   TicketActivity[]
-  attachments  Attachment[]
+  comments      Comment[]
+  activities    TicketActivity[]
+  attachments   Attachment[]
+  collaborators TicketCollaborator[]
 }
 
 model Comment {
@@ -264,6 +267,25 @@ model UserClient {
   client    ClientCompany @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([userId, clientId])
+}
+
+// Colaboradores de un ticket: usuarios registrados que siguen sus
+// actualizaciones (reciben notificaciones y pueden ver el ticket)
+model TicketCollaborator {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation("CollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Quién lo agregó (para auditoría); se conserva aunque se borre ese usuario
+  addedById String?
+  addedBy   User?    @relation("CollaboratorAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@unique([ticketId, userId])
 }
 
 model AuditLog {
