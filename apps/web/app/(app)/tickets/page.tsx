@@ -64,7 +64,14 @@ export default async function TicketsPage({ searchParams }: PageProps) {
     user.roleKey === "SUPERADMIN"
       ? {}
       : user.roleKey === "CLIENT_USER"
-      ? { clientId: user.clientId ?? "__none__", requesterId: user.id }
+      ? {
+          // Sus propios tickets O aquellos donde es colaborador
+          clientId: user.clientId ?? "__none__",
+          OR: [
+            { requesterId: user.id },
+            { collaborators: { some: { userId: user.id } } },
+          ],
+        }
       : user.roleKey === "AGENT"
       ? agentClientIds.length > 0
         ? { clientId: { in: agentClientIds } }
@@ -115,9 +122,14 @@ export default async function TicketsPage({ searchParams }: PageProps) {
     ...(periodFilter ? { createdAt: periodFilter } : {}),
     ...(searchQuery
       ? {
-          OR: [
-            { title: { contains: searchQuery } },
-            { folio: { contains: searchQuery } },
+          // AND para no colisionar con el OR de acceso de CLIENT_USER
+          AND: [
+            {
+              OR: [
+                { title: { contains: searchQuery } },
+                { folio: { contains: searchQuery } },
+              ],
+            },
           ],
         }
       : {}),
