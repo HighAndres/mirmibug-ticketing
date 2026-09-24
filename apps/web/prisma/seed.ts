@@ -1,6 +1,8 @@
+import "dotenv/config";
 import { PrismaClient, TicketPriority, TicketStatus, AuditAction } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const adapter = new PrismaBetterSqlite3({
   url: process.env.DATABASE_URL!,
@@ -106,13 +108,54 @@ const roleDefinitions = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Contraseñas del seed
+//
+// Nunca se escriben en el código. Cada una se toma de una variable de entorno
+// (SEED_*_PASSWORD) y, si no está definida, se genera una aleatoria que se
+// imprime UNA sola vez al final. El upsert no toca la contraseña de cuentas
+// que ya existen, así que re-ejecutar el seed no las reinicia.
+// ---------------------------------------------------------------------------
+const generatedPasswords: Record<string, string> = {};
+
+async function seedPassword(envKey: string, email: string): Promise<string> {
+  let plain = process.env[envKey]?.trim();
+  if (!plain) {
+    plain = crypto.randomBytes(12).toString("base64url");
+    generatedPasswords[email] = plain;
+  }
+  return bcrypt.hash(plain, 10);
+}
+
 async function main() {
+  // Guard: el seed crea cuentas de demostración; en producción solo debe
+  // correr de forma explícita y consciente.
+  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "1") {
+    console.error(
+      "Seed bloqueado: NODE_ENV=production. Si realmente quieres ejecutarlo, define SEED_ALLOW_PRODUCTION=1 " +
+        "y las variables SEED_*_PASSWORD."
+    );
+    process.exit(1);
+  }
+
   console.log("Iniciando seed seguro...");
 
-  const superPassword = await bcrypt.hash("Admin1234!", 10);
-  const agentPassword = await bcrypt.hash("Agent1234!", 10);
-  const clientAdminPassword = await bcrypt.hash("ClientAdmin1234!", 10);
-  const clientUserPassword = await bcrypt.hash("Client1234!", 10);
+  const superPassword = await seedPassword("SEED_ADMIN_PASSWORD", "admin@mirmibug.local");
+  const agentPassword = await seedPassword("SEED_AGENT_PASSWORD", "agente@mirmibug.local");
+  const clientAdminPassword = await seedPassword("SEED_CLIENT_ADMIN_PASSWORD", "admin@demoindustrial.com");
+  const clientUserPassword = await seedPassword("SEED_CLIENT_USER_PASSWORD", "cliente@demoindustrial.com");
+  const supervisorPassword = await seedPassword("SEED_SUPERVISOR_PASSWORD", "supervisor@demoindustrial.com");
+
+  // Cuentas que ya existían: su contraseña no cambia, así que no se reporta una generada
+  const existingEmails = new Set(
+    (
+      await prisma.user.findMany({
+        where: { email: { in: Object.keys(generatedPasswords) } },
+        select: { email: true },
+      })
+    ).map((u: { email: string }) => u.email)
+  );
+  for (const email of existingEmails) delete generatedPasswords[email];
 
   const company = await prisma.clientCompany.upsert({
     where: { slug: "demo-industrial" },
@@ -332,8 +375,6 @@ async function main() {
     },
   });
 
-  const supervisorPassword = await bcrypt.hash("Supervisor1234!", 10);
-
   const clientSupervisor = await prisma.user.upsert({
     where: { email: "supervisor@demoindustrial.com" },
     update: {
@@ -480,6 +521,14 @@ async function main() {
   console.log("Client supervisor:", clientSupervisor.email);
   console.log("Client user:", clientUser.email);
   console.log("Cliente:", company.name);
+
+  const generated = Object.entries(generatedPasswords);
+  if (generated.length > 0) {
+    console.log("\nContraseñas generadas para cuentas NUEVAS (guárdalas ahora; no se vuelven a mostrar):");
+    for (const [email, plain] of generated) console.log(`  ${email}  ->  ${plain}`);
+    console.log("Para fijarlas tú, define SEED_ADMIN_PASSWORD, SEED_AGENT_PASSWORD, SEED_CLIENT_ADMIN_PASSWORD,");
+    console.log("SEED_SUPERVISOR_PASSWORD y SEED_CLIENT_USER_PASSWORD antes de correr el seed.");
+  }
 }
 
 main()
