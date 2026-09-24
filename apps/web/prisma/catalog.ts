@@ -9,12 +9,18 @@
  *   npx tsx prisma/catalog.ts --dry-run   # solo reporta, no escribe
  *   npx tsx prisma/catalog.ts             # aplica los cambios
  */
+import "dotenv/config"; // carga DATABASE_URL desde apps/web/.env si no viene en el entorno
 import { PrismaClient, AuditAction } from "@prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
+if (!process.env.DATABASE_URL) {
+  console.error("ERROR: DATABASE_URL no está definida (ni en el entorno ni en .env). Ejecuta desde apps/web.");
+  process.exit(1);
+}
+
+const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 // ---------------------------------------------------------------------------
