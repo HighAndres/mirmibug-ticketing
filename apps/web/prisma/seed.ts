@@ -248,20 +248,15 @@ async function main() {
   };
 
   for (const category of categoriesData) {
+    // Catálogo global: las categorías no pertenecen a un cliente
     const cat = await prisma.category.upsert({
-      where: {
-        clientId_name: {
-          clientId: company.id,
-          name: category.name,
-        },
-      },
+      where: { name: category.name },
       update: {
         description: category.description,
       },
       create: {
         name: category.name,
         description: category.description,
-        clientId: company.id,
       },
     });
 
@@ -414,12 +409,7 @@ async function main() {
   }
 
   const helpDeskCategory = await prisma.category.findUnique({
-    where: {
-      clientId_name: {
-        clientId: company.id,
-        name: "Help Desk",
-      },
-    },
+    where: { name: "Help Desk" },
   });
 
   if (!helpDeskCategory) {

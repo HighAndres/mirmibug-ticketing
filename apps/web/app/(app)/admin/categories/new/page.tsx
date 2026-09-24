@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createCategory } from "@/lib/actions/admin";
@@ -9,18 +8,7 @@ export const metadata = { title: "Nueva categoría" };
 export default async function NewCategoryPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
-
-  const { user } = session;
-  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
-
-  const clients =
-    user.roleKey === "SUPERADMIN"
-      ? await prisma.clientCompany.findMany({
-          where: { isActive: true },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true },
-        })
-      : [];
+  if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
   return (
     <div className="min-h-full bg-[#15171c] text-white">
@@ -32,7 +20,12 @@ export default async function NewCategoryPage() {
           >
             ← Categorías
           </Link>
-          <h1 className="text-2xl font-bold">Nueva categoría</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Nueva categoría</h1>
+            <p className="mt-0.5 text-sm text-zinc-500">
+              Estará disponible para todos los clientes
+            </p>
+          </div>
         </div>
       </section>
 
@@ -69,30 +62,6 @@ export default async function NewCategoryPage() {
                 className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none resize-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
               />
             </div>
-
-            {user.roleKey === "SUPERADMIN" && (
-              <div>
-                <label
-                  htmlFor="clientId"
-                  className="block text-sm font-medium text-zinc-400 mb-2"
-                >
-                  Cliente <span className="text-red-400">*</span>
-                </label>
-                <select
-                  id="clientId"
-                  name="clientId"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-[#15171c] px-4 py-3 text-sm text-white outline-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
-                >
-                  <option value="">Selecciona un cliente</option>
-                  {clients.map((c: (typeof clients)[number]) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link

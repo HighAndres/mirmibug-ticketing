@@ -33,7 +33,7 @@ export default async function ClientDetailPage({
     where: { id },
     include: {
       _count: {
-        select: { users: true, tickets: true, categories: true },
+        select: { users: true, tickets: true },
       },
     },
   });
@@ -525,10 +525,6 @@ export default async function ClientDetailPage({
                 <dd className="text-zinc-300 text-right max-w-[200px] truncate">
                   {client.welcomeText ?? "—"}
                 </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Categorías</dt>
-                <dd className="text-zinc-300">{client._count.categories}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-zinc-500">Creado</dt>

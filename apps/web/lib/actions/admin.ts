@@ -384,7 +384,7 @@ export async function deleteClient(id: string) {
     );
   }
 
-  // Borrar el logo del disco si existe (las categorías se eliminan en cascada)
+  // Borrar el logo del disco si existe
   if (client.logoUrl) {
     const storedPath = client.logoUrl.split("?")[0];
     await fs.unlink(path.join(getAppDir(), "public", storedPath)).catch(() => {});
@@ -405,24 +405,29 @@ export async function deleteClient(id: string) {
   revalidatePath("/admin/clients");
 }
 
-// ── Categories ────────────────────────────────────────────────────────────────
+// ── Categories (catálogo global, solo SUPERADMIN) ─────────────────────────────
+
+/** Convierte el error de nombre duplicado (P2002) en un mensaje claro. */
+function isUniqueViolation(err: unknown): boolean {
+  return (err as { code?: string })?.code === "P2002";
+}
 
 export async function createCategory(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireAdmin("SUPERADMIN");
   const actor = session.user;
 
-  const name = (formData.get("name") as string).trim();
-  const description = (formData.get("description") as string).trim() || null;
-  const clientId =
-    actor.roleKey === "SUPERADMIN"
-      ? (formData.get("clientId") as string)
-      : actor.clientId!;
+  const name = ((formData.get("name") as string) ?? "").trim();
+  const description = ((formData.get("description") as string) ?? "").trim() || null;
 
-  if (!name || !clientId) throw new Error("Nombre y cliente son requeridos");
+  if (!name) throw new Error("El nombre es requerido");
 
-  const category = await prisma.category.create({
-    data: { name, description, clientId },
-  });
+  let category;
+  try {
+    category = await prisma.category.create({ data: { name, description } });
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new Error(`Ya existe una categoría llamada "${name}"`);
+    throw err;
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -439,69 +444,81 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  const session = await requireAdmin();
-  const actor = session.user;
+  await requireAdmin("SUPERADMIN");
 
   const existing = await prisma.category.findUnique({ where: { id } });
   if (!existing) throw new Error("Categoría no encontrada");
-  if (actor.roleKey !== "SUPERADMIN" && existing.clientId !== actor.clientId) {
-    throw new Error("No autorizado");
-  }
 
-  const name = (formData.get("name") as string).trim();
-  const description = (formData.get("description") as string).trim() || null;
+  const name = ((formData.get("name") as string) ?? "").trim();
+  const description = ((formData.get("description") as string) ?? "").trim() || null;
 
   if (!name) throw new Error("El nombre es requerido");
 
-  await prisma.category.update({ where: { id }, data: { name, description } });
+  try {
+    await prisma.category.update({ where: { id }, data: { name, description } });
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new Error(`Ya existe una categoría llamada "${name}"`);
+    throw err;
+  }
 
   revalidatePath("/admin/categories");
   redirect("/admin/categories");
 }
 
 export async function deleteCategory(id: string) {
-  const session = await requireAdmin();
+  const session = await requireAdmin("SUPERADMIN");
   const actor = session.user;
 
   const cat = await prisma.category.findUnique({
     where: { id },
-    include: { _count: { select: { tickets: true } } },
+    include: { _count: { select: { tickets: true, subcategories: true } } },
   });
   if (!cat) throw new Error("Categoría no encontrada");
-  if (actor.roleKey !== "SUPERADMIN" && cat.clientId !== actor.clientId) {
-    throw new Error("No autorizado");
-  }
   if (cat._count.tickets > 0) {
     throw new Error("No se puede eliminar una categoría con tickets asociados");
+  }
+  if (cat._count.subcategories > 0) {
+    throw new Error("Elimina primero las subcategorías de esta categoría");
   }
 
   await prisma.category.delete({ where: { id } });
 
+  await prisma.auditLog.create({
+    data: {
+      action: "DELETE",
+      entityType: "Category",
+      entityId: id,
+      description: `Categoría "${cat.name}" eliminada`,
+      actorId: actor.id,
+    },
+  });
+
   revalidatePath("/admin/categories");
 }
 
-// ── Subcategories ─────────────────────────────────────────────────────────────
+// ── Subcategories (catálogo global, solo SUPERADMIN) ──────────────────────────
 
 export async function createSubcategory(formData: FormData) {
-  const session = await requireAdmin();
+  const session = await requireAdmin("SUPERADMIN");
   const actor = session.user;
 
-  const name = (formData.get("name") as string).trim();
-  const description = (formData.get("description") as string).trim() || null;
-  const categoryId = formData.get("categoryId") as string;
+  const name = ((formData.get("name") as string) ?? "").trim();
+  const description = ((formData.get("description") as string) ?? "").trim() || null;
+  const categoryId = (formData.get("categoryId") as string) ?? "";
 
   if (!name || !categoryId) throw new Error("Nombre y categoría son requeridos");
 
-  // Verificar que la categoría pertenece al cliente del usuario
   const category = await prisma.category.findUnique({ where: { id: categoryId } });
   if (!category) throw new Error("Categoría no encontrada");
-  if (actor.roleKey !== "SUPERADMIN" && category.clientId !== actor.clientId) {
-    throw new Error("No autorizado");
-  }
 
-  await prisma.subcategory.create({
-    data: { name, description, categoryId },
-  });
+  try {
+    await prisma.subcategory.create({ data: { name, description, categoryId } });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new Error(`Ya existe la subcategoría "${name}" en "${category.name}"`);
+    }
+    throw err;
+  }
 
   await prisma.auditLog.create({
     data: {
@@ -518,7 +535,7 @@ export async function createSubcategory(formData: FormData) {
 }
 
 export async function deleteSubcategory(id: string) {
-  const session = await requireAdmin();
+  const session = await requireAdmin("SUPERADMIN");
   const actor = session.user;
 
   const sub = await prisma.subcategory.findUnique({
@@ -526,14 +543,21 @@ export async function deleteSubcategory(id: string) {
     include: { category: true, _count: { select: { tickets: true } } },
   });
   if (!sub) throw new Error("Subcategoría no encontrada");
-  if (actor.roleKey !== "SUPERADMIN" && sub.category.clientId !== actor.clientId) {
-    throw new Error("No autorizado");
-  }
   if (sub._count.tickets > 0) {
     throw new Error("No se puede eliminar una subcategoría con tickets asociados");
   }
 
   await prisma.subcategory.delete({ where: { id } });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "DELETE",
+      entityType: "Subcategory",
+      entityId: id,
+      description: `Subcategoría "${sub.name}" eliminada de "${sub.category.name}"`,
+      actorId: actor.id,
+    },
+  });
 
   revalidatePath("/admin/categories");
 }

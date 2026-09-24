@@ -19,42 +19,70 @@ import { canModifyTicket, canManageTickets, canManageCollaborators, canWriteInte
 // ---------------------------------------------------------------------------
 // Crear ticket
 // ---------------------------------------------------------------------------
-export async function createTicket(formData: FormData) {
+
+/** Estado que devuelve createTicket al formulario (useActionState). */
+export type CreateTicketState = { error: string } | null;
+
+const VALID_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
+type Priority = (typeof VALID_PRIORITIES)[number];
+
+/**
+ * Crea un ticket. Los errores de validación se devuelven como estado para
+ * mostrarlos en el formulario (en vez de lanzar y caer en la pantalla genérica
+ * de error). En éxito redirige al detalle del ticket.
+ */
+export async function createTicket(
+  _prev: CreateTicketState,
+  formData: FormData
+): Promise<CreateTicketState> {
   const session = await auth();
-  if (!session?.user) throw new Error("No autenticado");
+  if (!session?.user) return { error: "Tu sesión expiró. Vuelve a iniciar sesión." };
 
   const { user } = session;
 
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const priority = formData.get("priority") as string;
-  const categoryId = formData.get("categoryId") as string;
+  const title = ((formData.get("title") as string) ?? "").trim();
+  const description = ((formData.get("description") as string) ?? "").trim();
+  const priorityRaw = (formData.get("priority") as string) || "MEDIUM";
+  const categoryId = (formData.get("categoryId") as string) || "";
   const subcategoryId = (formData.get("subcategoryId") as string) || null;
 
-  if (!title?.trim() || !description?.trim() || !categoryId) {
-    throw new Error("Campos requeridos incompletos");
+  if (!title || !description) {
+    return { error: "El título y la descripción son obligatorios." };
   }
+  if (title.length > 200) {
+    return { error: "El título no puede exceder 200 caracteres." };
+  }
+  if (!categoryId) {
+    return { error: "Selecciona una categoría." };
+  }
+  if (!(VALID_PRIORITIES as readonly string[]).includes(priorityRaw)) {
+    return { error: "Prioridad no válida." };
+  }
+  const priority = priorityRaw as Priority;
 
   // El clientId viene de la sesión, o lo elige el SUPERADMIN/AGENT multi-cliente en el form
   let clientId: string;
   if (user.roleKey === "SUPERADMIN") {
-    clientId = formData.get("clientId") as string;
+    clientId = (formData.get("clientId") as string) || "";
   } else if (user.roleKey === "AGENT" && !user.clientId) {
-    // Agente multi-cliente: debe elegir el cliente desde el form
-    clientId = formData.get("clientId") as string;
+    // Agente multi-cliente: el cliente viene del form (selector o campo oculto)
+    clientId = (formData.get("clientId") as string) || "";
+    if (clientId && !(await isSameTenantAsync(user, clientId))) {
+      return { error: "No tienes acceso a ese cliente." };
+    }
   } else {
-    clientId = user.clientId!;
+    clientId = user.clientId ?? "";
   }
 
-  if (!clientId) throw new Error("Cliente requerido");
+  if (!clientId) return { error: "Selecciona un cliente." };
 
-  // La categoría (y subcategoría) deben pertenecer al cliente del ticket
+  // Las categorías son un catálogo global; la subcategoría debe colgar de la categoría
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
-    select: { clientId: true },
+    select: { id: true },
   });
-  if (!category || category.clientId !== clientId) {
-    throw new Error("Categoría no válida para este cliente");
+  if (!category) {
+    return { error: "La categoría seleccionada ya no existe. Vuelve a seleccionarla." };
   }
   if (subcategoryId) {
     const sub = await prisma.subcategory.findUnique({
@@ -62,57 +90,62 @@ export async function createTicket(formData: FormData) {
       select: { categoryId: true },
     });
     if (!sub || sub.categoryId !== categoryId) {
-      throw new Error("Subcategoría no válida para esta categoría");
+      return { error: "La subcategoría no corresponde a la categoría elegida." };
     }
   }
 
   // Crear con reintento: dos creaciones simultáneas pueden calcular el mismo
   // folio y chocar con el unique; se regenera y reintenta.
   let ticket;
-  for (let attempt = 0; ; attempt++) {
-    const folio = await generateFolio(clientId);
-    try {
-      ticket = await prisma.ticket.create({
-        data: {
-          folio,
-          title: title.trim(),
-          description: description.trim(),
-          priority: (priority as "LOW" | "MEDIUM" | "HIGH" | "URGENT") ?? "MEDIUM",
-          status: "OPEN",
-          requesterId: user.id,
-          categoryId,
-          subcategoryId,
-          clientId,
-        },
-      });
-      break;
-    } catch (err) {
-      if ((err as { code?: string }).code === "P2002" && attempt < 4) continue;
-      throw err;
+  try {
+    for (let attempt = 0; ; attempt++) {
+      const folio = await generateFolio(clientId);
+      try {
+        ticket = await prisma.ticket.create({
+          data: {
+            folio,
+            title,
+            description,
+            priority,
+            status: "OPEN",
+            requesterId: user.id,
+            categoryId,
+            subcategoryId,
+            clientId,
+          },
+        });
+        break;
+      } catch (err) {
+        if ((err as { code?: string }).code === "P2002" && attempt < 4) continue;
+        throw err;
+      }
     }
+
+    await Promise.all([
+      prisma.auditLog.create({
+        data: {
+          action: "CREATE",
+          entityType: "Ticket",
+          entityId: ticket.id,
+          description: `Ticket ${ticket.folio} creado: "${title}"`,
+          actorId: user.id,
+          metadataJson: JSON.stringify({ folio: ticket.folio, clientId, categoryId }),
+        },
+      }),
+      prisma.ticketActivity.create({
+        data: {
+          type: "CREATED",
+          ticketId: ticket.id,
+          actorId: user.id,
+        },
+      }),
+    ]);
+  } catch (err) {
+    console.error("[createTicket] Error al crear ticket:", err);
+    return { error: "No se pudo guardar el ticket. Intenta de nuevo en unos segundos." };
   }
 
-  await Promise.all([
-    prisma.auditLog.create({
-      data: {
-        action: "CREATE",
-        entityType: "Ticket",
-        entityId: ticket.id,
-        description: `Ticket ${ticket.folio} creado: "${title}"`,
-        actorId: user.id,
-        metadataJson: JSON.stringify({ folio: ticket.folio, clientId, categoryId }),
-      },
-    }),
-    prisma.ticketActivity.create({
-      data: {
-        type: "CREATED",
-        ticketId: ticket.id,
-        actorId: user.id,
-      },
-    }),
-  ]);
-
-  // Email: notificar al solicitante
+  // Email: notificar al solicitante (nunca bloquea la creación)
   notifyTicketCreated(user.email ?? "", user.name ?? "", ticket).catch(console.error);
 
   redirect(`/tickets/${ticket.id}`);

@@ -15,15 +15,10 @@ export default async function EditCategoryPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { user } = session;
-  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
+  if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
-  const cat = await prisma.category.findUnique({
-    where: { id },
-    include: { client: { select: { name: true } } },
-  });
+  const cat = await prisma.category.findUnique({ where: { id } });
   if (!cat) notFound();
-  if (user.roleKey !== "SUPERADMIN" && cat.clientId !== user.clientId) notFound();
 
   const updateAction = updateCategory.bind(null, id);
 
@@ -39,7 +34,7 @@ export default async function EditCategoryPage({
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Editar categoría</h1>
-            <p className="mt-0.5 text-sm text-zinc-500">{cat.client.name}</p>
+            <p className="mt-0.5 text-sm text-zinc-500">Catálogo global · aplica a todos los clientes</p>
           </div>
         </div>
       </section>

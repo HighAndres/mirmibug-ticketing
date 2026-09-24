@@ -3,60 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { deleteCategory, deleteSubcategory } from "@/lib/actions/admin";
-import ClientFilter from "./client-filter";
-import { getUserClientIds } from "@/lib/permissions";
 
 export const metadata = { title: "Categorías" };
 
-export default async function CategoriesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ clientId?: string }>;
-}) {
+// Catálogo global de categorías y subcategorías: aplica a todos los clientes
+// y lo administra únicamente el Superadmin.
+export default async function CategoriesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
-  const { user } = session;
-  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
-
-  const isSuperAdmin = user.roleKey === "SUPERADMIN";
-  const params = await searchParams;
-  const filterClientId = params.clientId;
-
-  const agentClientIds = user.roleKey === "AGENT"
-    ? await getUserClientIds(user.id, user.roleKey, user.clientId)
-    : [];
-
-  // Filtro base por tenant
-  const clientFilter = isSuperAdmin
-    ? filterClientId
-      ? { clientId: filterClientId }
-      : {}
-    : user.roleKey === "AGENT" && agentClientIds.length > 0
-    ? { clientId: { in: agentClientIds } }
-    : { clientId: user.clientId ?? "__none__" };
-
-  const [categories, clients] = await Promise.all([
-    prisma.category.findMany({
-      where: clientFilter,
-      orderBy: [{ client: { name: "asc" } }, { name: "asc" }],
-      include: {
-        client: { select: { name: true } },
-        subcategories: {
-          orderBy: { name: "asc" },
-          include: { _count: { select: { tickets: true } } },
-        },
-        _count: { select: { tickets: true } },
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+    include: {
+      subcategories: {
+        orderBy: { name: "asc" },
+        include: { _count: { select: { tickets: true } } },
       },
-    }),
-    isSuperAdmin
-      ? prisma.clientCompany.findMany({
-          where: { isActive: true },
-          orderBy: { name: "asc" },
-          select: { id: true, name: true },
-        })
-      : Promise.resolve([]),
-  ]);
+      _count: { select: { tickets: true } },
+    },
+  });
 
   return (
     <div className="min-h-full bg-[#15171c] text-white">
@@ -65,23 +31,16 @@ export default async function CategoriesPage({
           <div>
             <h1 className="text-2xl font-bold">Categorías</h1>
             <p className="mt-1 text-sm text-zinc-500">
-              {categories.length} categoría{categories.length !== 1 ? "s" : ""}
+              {categories.length} categoría{categories.length !== 1 ? "s" : ""} · catálogo
+              compartido por todos los clientes
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {isSuperAdmin && (
-              <ClientFilter
-                clients={clients}
-                currentClientId={filterClientId ?? ""}
-              />
-            )}
-            <Link
-              href="/admin/categories/new"
-              className="inline-flex items-center gap-2 rounded-xl bg-[#38d84e] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#2bc040]"
-            >
-              + Nueva categoría
-            </Link>
-          </div>
+          <Link
+            href="/admin/categories/new"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#38d84e] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#2bc040]"
+          >
+            + Nueva categoría
+          </Link>
         </div>
       </section>
 
@@ -103,9 +62,6 @@ export default async function CategoriesPage({
                   <div className="flex items-center gap-3 mt-1">
                     {cat.description && (
                       <span className="text-xs text-zinc-500">{cat.description}</span>
-                    )}
-                    {isSuperAdmin && (
-                      <span className="text-xs text-zinc-600">— {cat.client?.name ?? "Sin cliente"}</span>
                     )}
                     <span className="text-xs text-zinc-600">
                       {cat._count.tickets} ticket{cat._count.tickets !== 1 ? "s" : ""}
