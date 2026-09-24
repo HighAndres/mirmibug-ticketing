@@ -15,15 +15,10 @@ export default async function NewSubcategoryPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const { user } = session;
-  if (!["SUPERADMIN", "CLIENT_ADMIN"].includes(user.roleKey)) redirect("/dashboard");
+  if (session.user.roleKey !== "SUPERADMIN") redirect("/dashboard");
 
-  const category = await prisma.category.findUnique({
-    where: { id },
-    include: { client: { select: { name: true } } },
-  });
+  const category = await prisma.category.findUnique({ where: { id } });
   if (!category) notFound();
-  if (user.roleKey !== "SUPERADMIN" && category.clientId !== user.clientId) notFound();
 
   return (
     <div className="min-h-full bg-[#15171c] text-white">
@@ -38,7 +33,7 @@ export default async function NewSubcategoryPage({
           <div>
             <h1 className="text-2xl font-bold">Nueva subcategoría</h1>
             <p className="mt-0.5 text-sm text-zinc-500">
-              Categoría: {category.name} — {category.client.name}
+              Categoría: {category.name}
             </p>
           </div>
         </div>

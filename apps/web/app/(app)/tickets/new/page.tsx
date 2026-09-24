@@ -31,26 +31,15 @@ export default async function NewTicketPage() {
   const fixedClientId =
     isAgentMultiClient && agentClientIds.length === 1 ? agentClientIds[0] : null;
 
-  // Cargar categorías disponibles según el cliente del usuario
-  const categoryFilter = isSuperAdmin
-    ? {}
-    : isAgentMultiClient
-    ? { clientId: { in: agentClientIds } }
-    : user.clientId
-    ? { clientId: user.clientId }
-    : { clientId: "__none__" };
-
+  // Catálogo global: las categorías aplican a cualquier cliente
   const categoryRows = await prisma.category.findMany({
-    where: categoryFilter,
-    orderBy: [{ client: { name: "asc" } }, { name: "asc" }],
-    include: { client: { select: { name: true, id: true } } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
   });
 
   const categories: FormCategory[] = categoryRows.map((c: (typeof categoryRows)[number]) => ({
     id: c.id,
     name: c.name,
-    clientId: c.client.id,
-    clientName: c.client.name,
   }));
 
   // Lista de clientes activos para el selector

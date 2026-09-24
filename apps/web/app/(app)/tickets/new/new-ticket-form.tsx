@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { createTicket, type CreateTicketState } from "@/lib/actions/tickets";
 
 export type FormClient = { id: string; name: string };
-export type FormCategory = { id: string; name: string; clientId: string; clientName: string };
+export type FormCategory = { id: string; name: string };
 type Subcategory = { id: string; name: string };
 
 const inputClass =
@@ -16,9 +16,9 @@ const selectClass =
 /**
  * Formulario de nuevo ticket.
  *
- * - Si el usuario debe elegir cliente (SUPERADMIN o agente multi-cliente), las
- *   categorías se filtran por el cliente seleccionado y se limpian al cambiarlo,
- *   para que nunca se envíe una categoría de otro cliente.
+ * - Las categorías son un catálogo global: aplican a cualquier cliente, así que
+ *   el selector de cliente (SUPERADMIN o agente multi-cliente) y el de categoría
+ *   son independientes.
  * - Los errores de validación del servidor se muestran en el formulario en vez
  *   de la pantalla genérica de error, y los campos conservan lo escrito.
  */
@@ -30,7 +30,7 @@ export default function NewTicketForm({
 }: {
   clients: FormClient[];
   categories: FormCategory[];
-  /** Mostrar selector de cliente y filtrar categorías por él */
+  /** Mostrar selector de cliente (el usuario puede crear tickets para varios) */
   needsClientSelector: boolean;
   /** Cliente implícito (agente con un solo cliente); se envía como campo oculto */
   fixedClientId: string | null;
@@ -49,21 +49,6 @@ export default function NewTicketForm({
 
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
-
-  // Categorías visibles: solo las del cliente elegido cuando hay selector
-  const visibleCategories = useMemo(() => {
-    if (!needsClientSelector) return categories;
-    if (!clientId) return [];
-    return categories.filter((c) => c.clientId === clientId);
-  }, [categories, needsClientSelector, clientId]);
-
-  const clientChosen = !needsClientSelector || clientId !== "";
-
-  function handleClientChange(value: string) {
-    setClientId(value);
-    // Al cambiar de cliente se descarta la categoría (y sus subcategorías)
-    handleCategoryChange("");
-  }
 
   // Contador de peticiones para ignorar respuestas de categorías ya descartadas
   const subsRequestRef = useRef(0);
@@ -94,6 +79,7 @@ export default function NewTicketForm({
       });
   }
 
+  const clientChosen = !needsClientSelector || clientId !== "";
   const canSubmit =
     !pending && clientChosen && categoryId !== "" && title.trim() !== "" && description.trim() !== "";
 
@@ -122,7 +108,7 @@ export default function NewTicketForm({
               name="clientId"
               required
               value={clientId}
-              onChange={(e) => handleClientChange(e.target.value)}
+              onChange={(e) => setClientId(e.target.value)}
               className={selectClass}
             >
               <option value="">Selecciona un cliente</option>
@@ -182,20 +168,17 @@ export default function NewTicketForm({
             required
             value={categoryId}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            disabled={!clientChosen}
             className={selectClass}
           >
-            <option value="">
-              {clientChosen ? "Selecciona categoría" : "Primero selecciona un cliente"}
-            </option>
-            {visibleCategories.map((cat) => (
+            <option value="">Selecciona categoría</option>
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
-          {clientChosen && visibleCategories.length === 0 && (
+          {categories.length === 0 && (
             <p className="mt-2 text-sm text-amber-300">
-              Este cliente no tiene categorías. Crea una en Administración → Categorías antes de
-              levantar el ticket.
+              No hay categorías registradas. Pide al Superadmin que cree una en Administración →
+              Categorías.
             </p>
           )}
         </div>

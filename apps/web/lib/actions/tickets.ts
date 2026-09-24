@@ -76,16 +76,13 @@ export async function createTicket(
 
   if (!clientId) return { error: "Selecciona un cliente." };
 
-  // La categoría (y subcategoría) deben pertenecer al cliente del ticket
+  // Las categorías son un catálogo global; la subcategoría debe colgar de la categoría
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
-    select: { clientId: true, name: true },
+    select: { id: true },
   });
-  if (!category || category.clientId !== clientId) {
-    return {
-      error:
-        "La categoría seleccionada no pertenece al cliente elegido. Vuelve a seleccionar la categoría.",
-    };
+  if (!category) {
+    return { error: "La categoría seleccionada ya no existe. Vuelve a seleccionarla." };
   }
   if (subcategoryId) {
     const sub = await prisma.subcategory.findUnique({

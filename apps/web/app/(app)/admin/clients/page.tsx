@@ -290,7 +290,7 @@ export default async function ClientsPage({ searchParams }: PageProps) {
                             </form>
                             <ConfirmDeleteButton
                               action={deleteClient.bind(null, c.id)}
-                              confirmMessage={`¿Borrar permanentemente el cliente "${c.name}"? Se eliminarán también sus categorías. Esta acción no se puede deshacer.`}
+                              confirmMessage={`¿Borrar permanentemente el cliente "${c.name}"? Esta acción no se puede deshacer.`}
                               disabledReason={
                                 c._count.users === 0 && c._count.tickets === 0
                                   ? undefined

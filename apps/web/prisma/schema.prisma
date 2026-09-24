@@ -59,7 +59,6 @@ model ClientCompany {
   ticketPrefix String?   // prefijo de folio, e.g. "DEMO", "ACME". Default: "MB"
 
   users       User[]
-  categories  Category[]
   tickets     Ticket[]
   userClients UserClient[]
 }
@@ -147,20 +146,16 @@ model User {
   addedCollaborations TicketCollaborator[] @relation("CollaboratorAddedBy")
 }
 
+// Catálogo global de categorías: aplican a cualquier cliente.
 model Category {
   id          String        @id @default(cuid())
-  name        String
+  name        String        @unique
   description String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  clientId    String
-  client      ClientCompany @relation(fields: [clientId], references: [id], onDelete: Cascade)
-
   tickets        Ticket[]
   subcategories  Subcategory[]
-
-  @@unique([clientId, name])
 }
 
 model Subcategory {
