@@ -2,9 +2,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { updateUser } from "@/lib/actions/admin";
+import { updateUser, setWhatsappVerified } from "@/lib/actions/admin";
 import { filterAssignableRoles } from "@/lib/permissions";
 import RoleClientSelector from "../../role-client-selector";
+import WhatsappFields from "../../whatsapp-fields";
+import WhatsappIcon from "@/components/WhatsappIcon";
 
 export const metadata = { title: "Editar usuario" };
 
@@ -27,6 +29,7 @@ export default async function EditUserPage({
         role: true,
         client: true,
         userClients: { select: { clientId: true } },
+        whatsappVerifiedBy: { select: { name: true } },
       },
     }),
     prisma.role.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
@@ -124,6 +127,13 @@ export default async function EditUserPage({
               isSuperAdmin={actor.roleKey === "SUPERADMIN"}
             />
 
+            <WhatsappFields
+              defaultPhone={targetUser.whatsappPhone}
+              defaultOptIn={targetUser.whatsappOptIn}
+              verifiedAt={targetUser.whatsappVerifiedAt}
+              verifiedByName={targetUser.whatsappVerifiedBy?.name ?? null}
+            />
+
             {targetUser.id !== actor.id && (
               <div className="flex items-center gap-3">
                 <input
@@ -155,6 +165,43 @@ export default async function EditUserPage({
             </div>
           </div>
         </form>
+
+        {/* Verificación del número: botón aparte del formulario (no se anidan forms) */}
+        {targetUser.whatsappPhone && (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-[#22262e] p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
+                  <WhatsappIcon size={14} className="text-[#25D366]" />
+                  Verificación de WhatsApp
+                </h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {targetUser.whatsappVerifiedAt ? (
+                    <>
+                      Número {targetUser.whatsappPhone} verificado por{" "}
+                      <span className="text-zinc-300">{targetUser.whatsappVerifiedBy?.name ?? "un administrador"}</span> el{" "}
+                      {new Date(targetUser.whatsappVerifiedAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}
+                    </>
+                  ) : (
+                    <>Confirma que el número {targetUser.whatsappPhone} pertenece a este usuario. Hasta entonces no podrá operar tickets por WhatsApp.</>
+                  )}
+                </p>
+              </div>
+              <form action={setWhatsappVerified.bind(null, id, !targetUser.whatsappVerifiedAt)}>
+                <button
+                  type="submit"
+                  className={
+                    targetUser.whatsappVerifiedAt
+                      ? "rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
+                      : "rounded-xl bg-emerald-600/20 border border-emerald-500/30 px-4 py-2 text-sm text-emerald-400 transition hover:bg-emerald-600/30 hover:text-emerald-300"
+                  }
+                >
+                  {targetUser.whatsappVerifiedAt ? "Quitar verificación" : "Marcar como verificado"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

@@ -21,6 +21,15 @@ enum TicketPriority {
   URGENT
 }
 
+// Canal por el que entró un ticket, comentario o adjunto.
+// SYSTEM = generado por la plataforma (p. ej. mensajes automáticos).
+enum Channel {
+  WEB
+  EMAIL
+  WHATSAPP
+  SYSTEM
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -44,9 +53,9 @@ model ClientCompany {
 
   // Branding & customization
   logoUrl      String?
-  primaryColor String?   // hex, e.g. "#38d84e"
-  accentColor  String?   // hex, secondary accent
-  welcomeText  String?   // mensaje en la pantalla de login
+  primaryColor String? // hex, e.g. "#38d84e"
+  accentColor  String? // hex, secondary accent
+  welcomeText  String? // mensaje en la pantalla de login
 
   // Contact info
   supportPhone String?
@@ -54,9 +63,9 @@ model ClientCompany {
   address      String?
 
   // Operational config
-  timezone     String?   @default("America/Mexico_City")
-  slaHours     Int?      @default(8)
-  ticketPrefix String?   // prefijo de folio, e.g. "DEMO", "ACME". Default: "MB"
+  timezone     String? @default("America/Mexico_City")
+  slaHours     Int?    @default(8)
+  ticketPrefix String? // prefijo de folio, e.g. "DEMO", "ACME". Default: "MB"
 
   users       User[]
   tickets     Ticket[]
@@ -64,73 +73,83 @@ model ClientCompany {
 }
 
 model Role {
-  id              String           @id @default(cuid())
-  key             String           @unique
-  name            String
-  description     String?
-  isSystem        Boolean          @default(false)
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   users           User[]
   rolePermissions RolePermission[]
 }
 
 model Permission {
-  id              String           @id @default(cuid())
-  key             String           @unique
-  name            String
-  description     String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   rolePermissions RolePermission[]
   userPermissions UserPermission[]
 }
 
 model RolePermission {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   roleId       String
   permissionId String
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime @default(now())
 
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, permissionId])
 }
 
 model UserPermission {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   userId       String
   permissionId String
-  allowed      Boolean    @default(true)
-  createdAt    DateTime   @default(now())
+  allowed      Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, permissionId])
 }
 
 model User {
-  id                  String           @id @default(cuid())
+  id                  String    @id @default(cuid())
   name                String
-  email               String           @unique
+  email               String    @unique
   password            String
-  isActive            Boolean          @default(true)
-  failedLoginAttempts Int              @default(0)
+  isActive            Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
   tokenInvalidatedAt  DateTime?
   clientId            String?
   roleId              String
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  client              ClientCompany?   @relation(fields: [clientId], references: [id])
-  role                Role             @relation(fields: [roleId], references: [id])
+  // WhatsApp (integración vía n8n). El teléfono se guarda normalizado en E.164
+  // (+52XXXXXXXXXX). Un número desconocido no puede operar tickets; la
+  // verificación es manual por un admin (quién y cuándo quedan registrados).
+  whatsappPhone         String?   @unique
+  whatsappOptIn         Boolean   @default(false)
+  whatsappVerifiedAt    DateTime?
+  whatsappVerifiedById  String?
+  whatsappVerifiedBy    User?     @relation("WhatsappVerifier", fields: [whatsappVerifiedById], references: [id], onDelete: SetNull)
+  whatsappVerifications User[]    @relation("WhatsappVerifier")
+
+  client ClientCompany? @relation(fields: [clientId], references: [id])
+  role   Role           @relation(fields: [roleId], references: [id])
 
   tickets             Ticket[]         @relation("TicketRequester")
   assigned            Ticket[]         @relation("TicketAssignee")
@@ -138,128 +157,150 @@ model User {
   comments            Comment[]
   userPermissions     UserPermission[]
 
-  auditLogs           AuditLog[]       @relation("AuditActor")
-  ticketActivities    TicketActivity[] @relation("ActivityActor")
-  attachments         Attachment[]     @relation("AttachmentUploader")
+  auditLogs           AuditLog[]           @relation("AuditActor")
+  ticketActivities    TicketActivity[]     @relation("ActivityActor")
+  attachments         Attachment[]         @relation("AttachmentUploader")
   userClients         UserClient[]
   collaborations      TicketCollaborator[] @relation("CollaboratorUser")
   addedCollaborations TicketCollaborator[] @relation("CollaboratorAddedBy")
+
+  whatsappConversations   WhatsappConversation[]
+  createdApiKeys          IntegrationApiKey[]    @relation("ApiKeyCreator")
+  createdWebhookEndpoints WebhookEndpoint[]      @relation("WebhookEndpointCreator")
 }
 
 // Catálogo global de categorías: aplican a cualquier cliente.
 model Category {
-  id          String        @id @default(cuid())
-  name        String        @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
   description String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  tickets        Ticket[]
-  subcategories  Subcategory[]
+  tickets       Ticket[]
+  subcategories Subcategory[]
 }
 
 model Subcategory {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  categoryId  String
-  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  tickets     Ticket[]
+  tickets Ticket[]
 
   @@unique([categoryId, name])
 }
 
 model Ticket {
-  id           String         @id @default(cuid())
-  folio        String         @unique
-  title        String
-  description  String
-  status       TicketStatus   @default(OPEN)
-  priority     TicketPriority @default(MEDIUM)
-  priorityValidated    Boolean  @default(false)
+  id                    String         @id @default(cuid())
+  folio                 String         @unique
+  title                 String
+  description           String
+  status                TicketStatus   @default(OPEN)
+  priority              TicketPriority @default(MEDIUM)
+  priorityValidated     Boolean        @default(false)
   priorityValidatedById String?
-  priorityValidatedBy   User?   @relation("TicketPriorityValidator", fields: [priorityValidatedById], references: [id])
+  priorityValidatedBy   User?          @relation("TicketPriorityValidator", fields: [priorityValidatedById], references: [id])
   priorityValidatedAt   DateTime?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
-  requesterId  String
-  requester    User           @relation("TicketRequester", fields: [requesterId], references: [id])
+  // Canal con el que se creó el ticket y última actividad del cliente
+  // (comentario o ticket creado por el solicitante, cualquier canal).
+  sourceChannel          Channel   @default(WEB)
+  lastCustomerActivityAt DateTime?
+  // Id del mensaje externo que originó el ticket (wamid en WhatsApp); único
+  // para que reintentos de n8n no creen tickets duplicados.
+  externalMessageId      String?   @unique
 
-  assigneeId   String?
-  assignee     User?          @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  requesterId String
+  requester   User   @relation("TicketRequester", fields: [requesterId], references: [id])
 
-  categoryId   String
-  category     Category       @relation(fields: [categoryId], references: [id])
+  assigneeId String?
+  assignee   User?   @relation("TicketAssignee", fields: [assigneeId], references: [id])
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
 
   subcategoryId String?
-  subcategory   Subcategory?  @relation(fields: [subcategoryId], references: [id])
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id])
 
-  clientId     String
-  client       ClientCompany  @relation(fields: [clientId], references: [id])
+  clientId String
+  client   ClientCompany @relation(fields: [clientId], references: [id])
 
-  comments      Comment[]
-  activities    TicketActivity[]
-  attachments   Attachment[]
-  collaborators TicketCollaborator[]
+  comments              Comment[]
+  activities            TicketActivity[]
+  attachments           Attachment[]
+  collaborators         TicketCollaborator[]
+  whatsappConversations WhatsappConversation[]
 }
 
 model Comment {
-  id           String    @id @default(cuid())
-  content      String
-  isInternal   Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  content    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  ticketId     String
-  ticket       Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  // Canal de origen. externalMessageId = id del mensaje en el canal externo
+  // (en WhatsApp el "wamid..."); único para que la ingesta sea idempotente.
+  channel           Channel @default(WEB)
+  externalMessageId String? @unique
 
-  authorId     String
-  author       User      @relation(fields: [authorId], references: [id])
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
 }
 
 model TicketActivity {
-  id           String    @id @default(cuid())
-  type         String    // STATUS_CHANGE, PRIORITY_CHANGE, ASSIGNMENT, PRIORITY_VALIDATION, CREATED
-  field        String?   // campo que cambió (status, priority, assigneeId)
-  oldValue     String?   // valor anterior
-  newValue     String?   // valor nuevo
-  createdAt    DateTime  @default(now())
+  id        String   @id @default(cuid())
+  type      String // STATUS_CHANGE, PRIORITY_CHANGE, ASSIGNMENT, PRIORITY_VALIDATION, CREATED
+  field     String? // campo que cambió (status, priority, assigneeId)
+  oldValue  String? // valor anterior
+  newValue  String? // valor nuevo
+  createdAt DateTime @default(now())
 
-  ticketId     String
-  ticket       Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  actorId      String
-  actor        User      @relation("ActivityActor", fields: [actorId], references: [id])
+  actorId String
+  actor   User   @relation("ActivityActor", fields: [actorId], references: [id])
 }
 
 model Attachment {
-  id           String    @id @default(cuid())
-  filename     String    // nombre original del archivo
-  storedName   String    // nombre en disco (hash-based)
-  mimeType     String
-  size         Int       // bytes
-  createdAt    DateTime  @default(now())
+  id         String   @id @default(cuid())
+  filename   String // nombre original del archivo
+  storedName String // nombre en disco (hash-based)
+  mimeType   String
+  size       Int // bytes
+  createdAt  DateTime @default(now())
 
-  ticketId     String
-  ticket       Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  // Canal de origen y, si vino de WhatsApp, el media id de Meta
+  source          Channel @default(WEB)
+  externalMediaId String?
+
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   uploadedById String
-  uploadedBy   User      @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  uploadedBy   User   @relation("AttachmentUploader", fields: [uploadedById], references: [id])
 }
 
 model UserClient {
-  id        String        @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   clientId  String
-  createdAt DateTime      @default(now())
+  createdAt DateTime @default(now())
 
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client    ClientCompany @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client ClientCompany @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([userId, clientId])
 }
@@ -270,15 +311,15 @@ model TicketCollaborator {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
 
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  userId    String
-  user      User     @relation("CollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation("CollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
 
   // Quién lo agregó (para auditoría); se conserva aunque se borre ese usuario
   addedById String?
-  addedBy   User?    @relation("CollaboratorAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+  addedBy   User?   @relation("CollaboratorAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
 
   @@unique([ticketId, userId])
 }
@@ -286,8 +327,8 @@ model TicketCollaborator {
 // Configuración global de correo (fila única, id = "singleton").
 // La contraseña SMTP se guarda cifrada (AES-256-GCM) en smtpPass.
 model EmailSettings {
-  id         String  @id
-  enabled    Boolean @default(false) // interruptor maestro de notificaciones por correo
+  id      String  @id
+  enabled Boolean @default(false) // interruptor maestro de notificaciones por correo
 
   smtpHost   String?
   smtpPort   Int?    @default(587)
@@ -308,14 +349,108 @@ model EmailSettings {
 }
 
 model AuditLog {
-  id            String       @id @default(cuid())
-  action        AuditAction
-  entityType    String
-  entityId      String?
-  description   String
-  metadataJson  String?
-  createdAt     DateTime     @default(now())
+  id           String      @id @default(cuid())
+  action       AuditAction
+  entityType   String
+  entityId     String?
+  description  String
+  metadataJson String?
+  createdAt    DateTime    @default(now())
 
-  actorId       String?
-  actor         User?        @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorId String?
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+}
+
+// ---------------------------------------------------------------------------
+// Integración WhatsApp (vía n8n). Toda la funcionalidad queda detrás del flag
+// WHATSAPP_INTEGRATION_ENABLED. SQLite no tiene JSON ni arrays nativos: los
+// campos *Json guardan JSON serializado (mismo patrón que AuditLog.metadataJson).
+// ---------------------------------------------------------------------------
+
+enum ConversationState {
+  IDLE
+  CHOOSING_TICKET
+  CREATING_TICKET
+  AWAITING_CONFIRMATION
+}
+
+// Estado de la conversación por número. La máquina de estados la lleva n8n;
+// aquí solo se persiste para que sobreviva entre mensajes.
+model WhatsappConversation {
+  id            String            @id @default(cuid())
+  phone         String            @unique // E.164 normalizado
+  state         ConversationState @default(IDLE)
+  contextJson   String? // datos temporales del flujo (título en captura, opciones mostradas, etc.)
+  lastInboundAt DateTime? // último mensaje recibido del cliente; base de la ventana de 24 h de Meta
+  expiresAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  // Contacto (User con whatsappPhone) al que pertenece el número, si se conoce
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Ticket al que se están dirigiendo los mensajes
+  activeTicketId String?
+  activeTicket   Ticket? @relation(fields: [activeTicketId], references: [id], onDelete: SetNull)
+}
+
+// API keys para integraciones externas (n8n). Se muestran una sola vez al
+// crearlas; aquí solo queda el hash SHA-256. keyPrefix (primeros 8 caracteres)
+// sirve para identificarla en la UI.
+model IntegrationApiKey {
+  id         String    @id @default(cuid())
+  name       String
+  keyPrefix  String
+  keyHash    String    @unique
+  scopesJson String // JSON array, p. ej. ["contacts:read","tickets:write"]
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  createdById String?
+  createdBy   User?   @relation("ApiKeyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+enum OutboxStatus {
+  PENDING // esperando el primer intento
+  PROCESSING // reclamado por el dispatcher (sustituye a FOR UPDATE SKIP LOCKED)
+  FAILED // el último intento falló; reintento programado en nextAttemptAt
+  DELIVERED
+  DEAD // agotó los reintentos; se reprocesa a mano
+}
+
+// Patrón outbox: el evento se inserta en la misma transacción que el cambio
+// de negocio y un dispatcher lo entrega a los WebhookEndpoint suscritos.
+model EventOutbox {
+  id            String       @id @default(uuid())
+  eventType     String // ticket.created | ticket.status_changed | ticket.comment_added | ticket.assigned
+  aggregateId   String // ticketId, sin FK: el evento debe sobrevivir al ticket
+  payloadJson   String
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now())
+  lockedAt      DateTime?
+  lastError     String?
+  createdAt     DateTime     @default(now())
+  deliveredAt   DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([aggregateId])
+}
+
+// Destinos de los eventos salientes (n8n). El secreto HMAC se guarda cifrado
+// con AES-256-GCM (lib/crypto.ts), igual que la contraseña SMTP.
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  name           String
+  url            String
+  secret         String // cifrado; nunca se devuelve al cliente
+  eventTypesJson String // JSON array de eventType suscritos
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("WebhookEndpointCreator", fields: [createdById], references: [id], onDelete: SetNull)
 }

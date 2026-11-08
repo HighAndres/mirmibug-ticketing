@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { invalidateUserSessions, toggleUserActive, deleteUser } from "@/lib/actions/admin";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+import WhatsappIcon from "@/components/WhatsappIcon";
 
 type UserRow = {
   id: string;
@@ -17,6 +18,9 @@ type UserRow = {
   ticketCount: number;
   deletable: boolean;
   assignedClientNames: string[];
+  whatsappPhone: string | null;
+  whatsappVerified: boolean;
+  whatsappOptIn: boolean;
 };
 
 type ClientOption = {
@@ -200,7 +204,25 @@ export default function UsersTable({
                           </p>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-zinc-400 text-xs">{u.email}</td>
+                      <td className="px-5 py-3 text-zinc-400 text-xs">
+                        {u.email}
+                        {u.whatsappPhone && (
+                          <span
+                            className={`mt-1 flex items-center gap-1 text-[10px] ${
+                              u.whatsappVerified ? "text-[#25D366]" : "text-amber-400"
+                            }`}
+                            title={
+                              u.whatsappVerified
+                                ? `WhatsApp verificado${u.whatsappOptIn ? " · notificaciones activas" : " · sin opt-in"}`
+                                : "WhatsApp sin verificar"
+                            }
+                          >
+                            <WhatsappIcon size={11} />
+                            {u.whatsappPhone}
+                            {u.whatsappVerified ? " ✓" : " · sin verificar"}
+                          </span>
+                        )}
+                      </td>
                       {isSuperAdmin && (
                         <td className="px-5 py-3 text-zinc-400 text-xs">
                           {u.clientName ?? (

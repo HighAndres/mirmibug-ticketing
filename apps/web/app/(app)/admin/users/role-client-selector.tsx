@@ -23,8 +23,11 @@ export default function RoleClientSelector({
   isSuperAdmin: boolean;
 }) {
   const [selectedRoleId, setSelectedRoleId] = useState(defaultRoleId ?? "");
+  // defaultClientIds llega como [] para roles no-agente: en ese caso debe
+  // mandar defaultClientId, si no el select mostraba "Sin cliente" y al
+  // guardar se perdía la empresa del usuario.
   const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(
-    new Set(defaultClientIds ?? (defaultClientId ? [defaultClientId] : []))
+    new Set(defaultClientIds?.length ? defaultClientIds : defaultClientId ? [defaultClientId] : [])
   );
 
   const selectedRole = roles.find((r) => r.id === selectedRoleId);

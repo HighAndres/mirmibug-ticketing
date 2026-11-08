@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createUser } from "@/lib/actions/admin";
 import { filterAssignableRoles } from "@/lib/permissions";
 import RoleClientSelector from "../role-client-selector";
+import WhatsappFields from "../whatsapp-fields";
 
 export const metadata = { title: "Nuevo usuario" };
 
@@ -96,6 +97,8 @@ export default async function NewUserPage() {
               clients={clients}
               isSuperAdmin={user.roleKey === "SUPERADMIN"}
             />
+
+            <WhatsappFields />
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link
