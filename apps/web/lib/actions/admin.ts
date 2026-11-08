@@ -10,6 +10,7 @@ import path from "path";
 import { validateRoleAssignment, filterAssignableRoles } from "@/lib/permissions";
 import { isValidHexColor } from "@/lib/colors";
 import { getPublicPath, getAppDir } from "@/lib/uploads";
+import { tryNormalizePhone } from "@/lib/integrations/phone";
 
 // ── Guard helpers ─────────────────────────────────────────────────────────────
 
@@ -32,6 +33,31 @@ async function requireAuth() {
   return session;
 }
 
+// ── WhatsApp helpers ─────────────────────────────────────────────────────────
+
+/** Lee y normaliza (E.164) los campos de WhatsApp del formulario de usuario. */
+function parseWhatsappFields(formData: FormData): { phone: string | null; optIn: boolean } {
+  const raw = ((formData.get("whatsappPhone") as string | null) ?? "").trim();
+  const optIn = formData.get("whatsappOptIn") === "on";
+  if (!raw) return { phone: null, optIn: false };
+  const phone = tryNormalizePhone(raw);
+  if (!phone) {
+    throw new Error(
+      `El número de WhatsApp "${raw}" no es válido. Usa 10 dígitos (55 1234 5678) o formato internacional (+52 55 1234 5678).`
+    );
+  }
+  return { phone, optIn };
+}
+
+/** El número es único en todo el sistema (es la identidad del remitente). */
+async function assertWhatsappPhoneAvailable(phone: string | null, excludeUserId?: string) {
+  if (!phone) return;
+  const other = await prisma.user.findUnique({ where: { whatsappPhone: phone }, select: { id: true, email: true } });
+  if (other && other.id !== excludeUserId) {
+    throw new Error(`El número de WhatsApp ${phone} ya está asignado a ${other.email}.`);
+  }
+}
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 export async function createUser(formData: FormData) {
@@ -44,6 +70,7 @@ export async function createUser(formData: FormData) {
   const roleId = formData.get("roleId") as string;
   const rawClientId = formData.get("clientId") as string;
   const clientIds = formData.getAll("clientIds") as string[];
+  const whatsapp = parseWhatsappFields(formData);
 
   if (!name || !email || !password || !roleId) {
     throw new Error("Nombre, email, contraseña y rol son requeridos");
@@ -62,9 +89,19 @@ export async function createUser(formData: FormData) {
     ? null
     : actor.roleKey === "SUPERADMIN" ? rawClientId || null : actor.clientId ?? null;
 
+  await assertWhatsappPhoneAvailable(whatsapp.phone);
+
   const hashed = await bcrypt.hash(password, 10);
   const user = await prisma.user.create({
-    data: { name, email, password: hashed, roleId, clientId },
+    data: {
+      name,
+      email,
+      password: hashed,
+      roleId,
+      clientId,
+      whatsappPhone: whatsapp.phone,
+      whatsappOptIn: whatsapp.optIn,
+    },
   });
 
   // Crear asignaciones de clientes para agentes multi-cliente
@@ -106,6 +143,8 @@ export async function updateUser(id: string, formData: FormData) {
   const roleId = formData.get("roleId") as string;
   const rawClientId = formData.get("clientId") as string;
   const clientIds = formData.getAll("clientIds") as string[];
+  const whatsapp = parseWhatsappFields(formData);
+  await assertWhatsappPhoneAvailable(whatsapp.phone, id);
   // El checkbox "Usuario activo" NO se muestra al editar la propia cuenta,
   // así que el campo no llega en el form. Si es la propia cuenta, conservar
   // el estado actual (nunca desactivarse a sí mismo desde este formulario).
@@ -129,6 +168,10 @@ export async function updateUser(id: string, formData: FormData) {
     roleId,
     clientId: clientId || null,
     isActive,
+    whatsappPhone: whatsapp.phone,
+    whatsappOptIn: whatsapp.optIn,
+    // Un número nuevo (o quitado) pierde la verificación: hay que confirmarlo otra vez
+    ...(whatsapp.phone !== existing.whatsappPhone ? { whatsappVerifiedAt: null, whatsappVerifiedById: null } : {}),
   };
   if (rawPassword) {
     data.password = await bcrypt.hash(rawPassword, 10);
@@ -164,6 +207,48 @@ export async function updateUser(id: string, formData: FormData) {
 
   revalidatePath("/admin/users");
   redirect("/admin/users");
+}
+
+/**
+ * Marca (o retira) la verificación manual del número de WhatsApp. Solo
+ * SUPERADMIN o el CLIENT_ADMIN de la misma empresa; queda quién y cuándo.
+ */
+export async function setWhatsappVerified(id: string, verified: boolean) {
+  const session = await requireAdmin();
+  const actor = session.user;
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, email: true, clientId: true, whatsappPhone: true, whatsappVerifiedAt: true },
+  });
+  if (!target) throw new Error("Usuario no encontrado");
+  if (actor.roleKey === "CLIENT_ADMIN" && target.clientId !== actor.clientId) {
+    throw new Error("No autorizado");
+  }
+  if (verified && !target.whatsappPhone) throw new Error("El usuario no tiene número de WhatsApp");
+
+  await prisma.user.update({
+    where: { id },
+    data: verified
+      ? { whatsappVerifiedAt: new Date(), whatsappVerifiedById: actor.id }
+      : { whatsappVerifiedAt: null, whatsappVerifiedById: null },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "UPDATE",
+      entityType: "User",
+      entityId: id,
+      description: verified
+        ? `WhatsApp ${target.whatsappPhone} de ${target.email} marcado como verificado`
+        : `Verificación de WhatsApp de ${target.email} retirada`,
+      actorId: actor.id,
+      metadataJson: JSON.stringify({ whatsappPhone: target.whatsappPhone, verified }),
+    },
+  });
+
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${id}/edit`);
 }
 
 export async function toggleUserActive(id: string) {

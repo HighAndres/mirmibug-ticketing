@@ -15,6 +15,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canModifyTicket, canManageTickets, canManageCollaborators, canWriteInternalNotes, isSameTenant, isSameTenantAsync, getUserClientIds } from "@/lib/permissions";
+import { enqueueTicketEvent, scheduleImmediateDispatch } from "@/lib/integrations/outbox";
 
 // ---------------------------------------------------------------------------
 // Crear ticket
@@ -95,51 +96,60 @@ export async function createTicket(
   }
 
   // Crear con reintento: dos creaciones simultáneas pueden calcular el mismo
-  // folio y chocar con el unique; se regenera y reintenta.
+  // folio y chocar con el unique; se regenera y reintenta. Ticket, auditoría,
+  // timeline y evento del outbox van en la misma transacción.
   let ticket;
+  let eventId: string | null = null;
   try {
     for (let attempt = 0; ; attempt++) {
       const folio = await generateFolio(clientId);
       try {
-        ticket = await prisma.ticket.create({
-          data: {
-            folio,
-            title,
-            description,
-            priority,
-            status: "OPEN",
-            requesterId: user.id,
-            categoryId,
-            subcategoryId,
-            clientId,
-          },
+        const result = await prisma.$transaction(async (tx) => {
+          const created = await tx.ticket.create({
+            data: {
+              folio,
+              title,
+              description,
+              priority,
+              status: "OPEN",
+              requesterId: user.id,
+              categoryId,
+              subcategoryId,
+              clientId,
+            },
+          });
+          await tx.auditLog.create({
+            data: {
+              action: "CREATE",
+              entityType: "Ticket",
+              entityId: created.id,
+              description: `Ticket ${created.folio} creado: "${title}"`,
+              actorId: user.id,
+              metadataJson: JSON.stringify({ folio: created.folio, clientId, categoryId }),
+            },
+          });
+          await tx.ticketActivity.create({
+            data: {
+              type: "CREATED",
+              ticketId: created.id,
+              actorId: user.id,
+            },
+          });
+          const evt = await enqueueTicketEvent(tx, {
+            eventType: "ticket.created",
+            ticket: created,
+            actor: { id: user.id, name: user.name ?? "Usuario", channel: "WEB" },
+          });
+          return { created, evt };
         });
+        ticket = result.created;
+        eventId = result.evt;
         break;
       } catch (err) {
         if ((err as { code?: string }).code === "P2002" && attempt < 4) continue;
         throw err;
       }
     }
-
-    await Promise.all([
-      prisma.auditLog.create({
-        data: {
-          action: "CREATE",
-          entityType: "Ticket",
-          entityId: ticket.id,
-          description: `Ticket ${ticket.folio} creado: "${title}"`,
-          actorId: user.id,
-          metadataJson: JSON.stringify({ folio: ticket.folio, clientId, categoryId }),
-        },
-      }),
-      prisma.ticketActivity.create({
-        data: {
-          type: "CREATED",
-          ticketId: ticket.id,
-          actorId: user.id,
-        },
-      }),
-    ]);
   } catch (err) {
     console.error("[createTicket] Error al crear ticket:", err);
     return { error: "No se pudo guardar el ticket. Intenta de nuevo en unos segundos." };
@@ -147,6 +157,7 @@ export async function createTicket(
 
   // Email: notificar al solicitante (nunca bloquea la creación)
   notifyTicketCreated(user.email ?? "", user.name ?? "", ticket).catch(console.error);
+  scheduleImmediateDispatch([eventId]);
 
   redirect(`/tickets/${ticket.id}`);
 }
@@ -199,13 +210,12 @@ export async function changeTicketStatus(ticketId: string, status: string) {
 
   const previousStatus = ticket.status;
 
-  await prisma.ticket.update({
-    where: { id: ticketId },
-    data: { status: status as "OPEN" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED" },
-  });
-
-  await Promise.all([
-    prisma.auditLog.create({
+  const eventId = await prisma.$transaction(async (tx) => {
+    const updated = await tx.ticket.update({
+      where: { id: ticketId },
+      data: { status: status as "OPEN" | "IN_PROGRESS" | "PENDING" | "RESOLVED" | "CLOSED" },
+    });
+    await tx.auditLog.create({
       data: {
         action: "UPDATE",
         entityType: "Ticket",
@@ -214,8 +224,8 @@ export async function changeTicketStatus(ticketId: string, status: string) {
         actorId: user.id,
         metadataJson: JSON.stringify({ from: previousStatus, to: status }),
       },
-    }),
-    prisma.ticketActivity.create({
+    });
+    await tx.ticketActivity.create({
       data: {
         type: "STATUS_CHANGE",
         field: "status",
@@ -224,8 +234,15 @@ export async function changeTicketStatus(ticketId: string, status: string) {
         ticketId,
         actorId: user.id,
       },
-    }),
-  ]);
+    });
+    return enqueueTicketEvent(tx, {
+      eventType: "ticket.status_changed",
+      ticket: updated,
+      previousStatus,
+      actor: { id: user.id, name: user.name ?? "Usuario", channel: "WEB" },
+    });
+  });
+  scheduleImmediateDispatch([eventId]);
 
   // Email: notificar al solicitante y al asignado
   notifyStatusChanged(
@@ -328,16 +345,15 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
     ? (await prisma.user.findUnique({ where: { id: previousAssigneeId }, select: { name: true } }))?.name ?? null
     : null;
 
-  await prisma.ticket.update({
-    where: { id: ticketId },
-    data: {
-      assigneeId: assigneeId || null,
-      status: assigneeId ? "IN_PROGRESS" : "OPEN",
-    },
-  });
-
-  await Promise.all([
-    prisma.auditLog.create({
+  const eventId = await prisma.$transaction(async (tx) => {
+    const updated = await tx.ticket.update({
+      where: { id: ticketId },
+      data: {
+        assigneeId: assigneeId || null,
+        status: assigneeId ? "IN_PROGRESS" : "OPEN",
+      },
+    });
+    await tx.auditLog.create({
       data: {
         action: "ASSIGN",
         entityType: "Ticket",
@@ -348,8 +364,8 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
         actorId: user.id,
         metadataJson: JSON.stringify({ assigneeId }),
       },
-    }),
-    prisma.ticketActivity.create({
+    });
+    await tx.ticketActivity.create({
       data: {
         type: "ASSIGNMENT",
         field: "assigneeId",
@@ -358,8 +374,16 @@ export async function assignTicket(ticketId: string, assigneeId: string | null) 
         ticketId,
         actorId: user.id,
       },
-    }),
-  ]);
+    });
+    return enqueueTicketEvent(tx, {
+      eventType: "ticket.assigned",
+      ticket: updated,
+      previousStatus: ticket.status,
+      assignee: assigneeId && newAssigneeName ? { id: assigneeId, name: newAssigneeName } : null,
+      actor: { id: user.id, name: user.name ?? "Usuario", channel: "WEB" },
+    });
+  });
+  scheduleImmediateDispatch([eventId]);
 
   // Email: notificar al nuevo asignado
   if (assigneeId) {
@@ -557,14 +581,36 @@ export async function addComment(formData: FormData) {
     throw new Error("Sin permisos para este ticket");
   }
 
-  await prisma.comment.create({
-    data: {
-      content: content.trim(),
-      isInternal,
-      ticketId,
-      authorId: user.id,
-    },
+  const eventId = await prisma.$transaction(async (tx) => {
+    const comment = await tx.comment.create({
+      data: {
+        content: content.trim(),
+        isInternal,
+        ticketId,
+        authorId: user.id,
+      },
+    });
+    // Solo emite si es público y el autor no es el solicitante (lo decide enqueueTicketEvent)
+    return enqueueTicketEvent(tx, {
+      eventType: "ticket.comment_added",
+      ticket: {
+        id: ticketId,
+        folio: ticket.folio,
+        title: ticket.title,
+        status: ticket.status,
+        requesterId: ticket.requesterId,
+      },
+      comment: {
+        id: comment.id,
+        content: comment.content,
+        isInternal: comment.isInternal,
+        channel: comment.channel,
+        author: { id: user.id, name: user.name ?? "Usuario" },
+      },
+      actor: { id: user.id, name: user.name ?? "Usuario", channel: "WEB" },
+    });
   });
+  scheduleImmediateDispatch([eventId]);
 
   // Email: solo comentarios públicos notifican al solicitante y asignado
   if (!isInternal) {

@@ -54,6 +54,9 @@ export default async function UsersPage() {
     deletable:
       u._count.tickets + u._count.comments + u._count.ticketActivities + u._count.attachments === 0,
     assignedClientNames: u.userClients.map((uc: { client: { name: string } }) => uc.client.name),
+    whatsappPhone: u.whatsappPhone,
+    whatsappVerified: u.whatsappVerifiedAt !== null,
+    whatsappOptIn: u.whatsappOptIn,
   }));
 
   return (

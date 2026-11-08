@@ -19,6 +19,10 @@ import {
 } from "@/lib/actions/tickets";
 import { canAccessTicket, canManageTickets, canManageCollaborators, getUserClientIds } from "@/lib/permissions";
 import FileUpload, { AttachmentList } from "./file-upload";
+import CommentVisibilityToggle from "./comment-visibility";
+import WhatsappIcon from "@/components/WhatsappIcon";
+import { isWhatsappIntegrationEnabled } from "@/lib/integrations/config";
+import { isWithin24hWindow } from "@/lib/integrations/conversations";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -108,6 +112,18 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   const canManage = canManageTickets(user.roleKey);
   const canManageCollabs = canManageCollaborators(user, ticket, agentClientIds);
+
+  // WhatsApp del solicitante: ventana de 24 h de Meta y si se le notifica por ese canal
+  const whatsappEnabled = isWhatsappIntegrationEnabled();
+  const requesterPhone = whatsappEnabled ? ticket.requester?.whatsappPhone ?? null : null;
+  const conversation = requesterPhone
+    ? await prisma.whatsappConversation.findUnique({
+        where: { phone: requesterPhone },
+        select: { lastInboundAt: true, state: true },
+      })
+    : null;
+  const windowOpen = isWithin24hWindow(conversation?.lastInboundAt);
+  const whatsappNotifies = !!requesterPhone && ticket.requester.whatsappOptIn;
 
   // Usuarios elegibles como colaboradores: mismo cliente + agentes/superadmin con acceso
   const eligibleCollaborators = canManageCollabs
@@ -200,6 +216,11 @@ export default async function TicketDetailPage({ params }: PageProps) {
                 {ticket.priorityValidated && (
                   <span className="inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                     Prioridad validada
+                  </span>
+                )}
+                {ticket.sourceChannel === "WHATSAPP" && (
+                  <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/30">
+                    <WhatsappIcon size={10} /> Creado por WhatsApp
                   </span>
                 )}
               </div>
@@ -302,6 +323,16 @@ export default async function TicketDetailPage({ params }: PageProps) {
                           {isInternal && (
                             <span className="text-[10px] font-medium uppercase tracking-wide rounded-full px-2 py-0.5 bg-amber-500/15 text-amber-400 border border-amber-500/30">
                               Nota interna
+                            </span>
+                          )}
+                          {entry.channel === "WHATSAPP" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium rounded-full px-2 py-0.5 bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/30" title="Recibido por WhatsApp">
+                              <WhatsappIcon size={10} /> WhatsApp
+                            </span>
+                          )}
+                          {entry.channel === "EMAIL" && (
+                            <span className="text-[10px] font-medium rounded-full px-2 py-0.5 bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                              Correo
                             </span>
                           )}
                           <span className="ml-auto text-xs text-zinc-600">
@@ -407,19 +438,8 @@ export default async function TicketDetailPage({ params }: PageProps) {
                     }
                     className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none resize-none focus:border-[#38d84e]/50 focus:ring-1 focus:ring-[#38d84e]/20"
                   />
-                  <div className="flex items-center justify-between">
-                    {!isClientUser && (
-                      <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          name="isInternal"
-                          value="true"
-                          className="rounded border-white/20 bg-white/5 accent-amber-400"
-                        />
-                        Nota interna (no visible al cliente)
-                      </label>
-                    )}
-                    {isClientUser && <div />}
+                  <div className="flex items-start justify-between gap-4">
+                    <CommentVisibilityToggle canInternal={!isClientUser} whatsappNotifies={whatsappNotifies} />
                     <button
                       type="submit"
                       className="rounded-xl bg-[#38d84e] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#2bc040]"
@@ -471,6 +491,46 @@ export default async function TicketDetailPage({ params }: PageProps) {
                   </span>
                 </dd>
               </div>
+              {requesterPhone && !isClientUser && (
+                <div>
+                  <dt className="flex items-center gap-1 text-zinc-500 text-xs mb-1">
+                    <WhatsappIcon size={11} className="text-[#25D366]" /> WhatsApp
+                  </dt>
+                  <dd className="space-y-1.5">
+                    <p className="text-zinc-300">{requesterPhone}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ticket.requester.whatsappVerifiedAt ? (
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Verificado</span>
+                      ) : (
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">Sin verificar</span>
+                      )}
+                      {ticket.requester.whatsappOptIn ? (
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/30">Notificaciones activas</span>
+                      ) : (
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-white/5 text-zinc-500 border border-white/10">Sin opt-in</span>
+                      )}
+                    </div>
+                    <p
+                      className={`text-[11px] ${windowOpen ? "text-emerald-400" : "text-zinc-500"}`}
+                      title="Meta solo permite texto libre durante 24 h tras el último mensaje del cliente; fuera de la ventana se usa una plantilla aprobada."
+                    >
+                      {windowOpen ? (
+                        <>
+                          Ventana de 24 h abierta hasta{" "}
+                          {new Date(conversation!.lastInboundAt!.getTime() + 24 * 3_600_000).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}
+                        </>
+                      ) : conversation?.lastInboundAt ? (
+                        <>
+                          Ventana de 24 h cerrada · último mensaje{" "}
+                          {new Date(conversation.lastInboundAt).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}
+                        </>
+                      ) : (
+                        <>Ventana de 24 h cerrada · sin mensajes recibidos</>
+                      )}
+                    </p>
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-zinc-500 text-xs mb-1">Creado</dt>
                 <dd className="text-zinc-300">

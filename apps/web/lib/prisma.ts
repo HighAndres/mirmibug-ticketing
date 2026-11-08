@@ -13,7 +13,8 @@ export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
-    log: ["query", "error", "warn"],
+    // En tests solo errores: el log de queries ahoga la salida de vitest
+    log: process.env.NODE_ENV === "test" ? ["error"] : ["query", "error", "warn"],
   });
 
 if (process.env.NODE_ENV !== "production") {

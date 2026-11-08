@@ -32,6 +32,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# tests
+.vitest/
+
 # builds / coverage
 coverage/
 dist/

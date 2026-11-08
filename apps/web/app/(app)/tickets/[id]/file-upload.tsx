@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import WhatsappIcon from "@/components/WhatsappIcon";
 
 const ALLOWED_EXTENSIONS = [
   ".png", ".jpg", ".jpeg", ".webp", ".gif",
@@ -93,7 +94,15 @@ export default function FileUpload({ ticketId }: { ticketId: string }) {
 export function AttachmentList({
   attachments,
 }: {
-  attachments: { id: string; filename: string; mimeType: string; size: number; uploadedBy: { name: string }; createdAt: Date }[];
+  attachments: {
+    id: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+    source?: string;
+    uploadedBy: { name: string };
+    createdAt: Date;
+  }[];
 }) {
   if (attachments.length === 0) return null;
 
@@ -115,8 +124,13 @@ export function AttachmentList({
                 : att.filename.split(".").pop()?.toUpperCase()?.slice(0, 4) ?? "?"}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-zinc-300 truncate group-hover:text-white transition">
-                {att.filename}
+              <p className="flex items-center gap-2 text-sm text-zinc-300 truncate group-hover:text-white transition">
+                <span className="truncate">{att.filename}</span>
+                {att.source === "WHATSAPP" && (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/30" title="Recibido por WhatsApp">
+                    <WhatsappIcon size={9} /> WhatsApp
+                  </span>
+                )}
               </p>
               <p className="text-[10px] text-zinc-600">
                 {formatSize(att.size)} — {att.uploadedBy.name} — {new Date(att.createdAt).toLocaleString("es-MX", {

@@ -38,6 +38,12 @@ export const authConfig: NextAuthConfig = {
         return true;
       }
 
+      // API de integración (n8n/WhatsApp): sin sesión; se autentica con
+      // X-Integration-Key en cada route handler (lib/integrations/auth.ts).
+      if (pathname.startsWith("/api/v1/integrations/")) {
+        return true;
+      }
+
       // Sin sesión → redirige al login
       if (!isLoggedIn) {
         return false;
